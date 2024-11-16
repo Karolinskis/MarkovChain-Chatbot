@@ -1,0 +1,25 @@
+﻿
+Microsoft Visual Studio Solution File, Format Version 12.00
+# Visual Studio Version 17
+VisualStudioVersion = 17.5.002.0
+MinimumVisualStudioVersion = 10.0.40219.1
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "MarkovChain-Chatbot", "MarkovChain-Chatbot.csproj", "{19A68D85-D4E2-4895-B6AF-0AEA9B4277D8}"
+EndProject
+Global
+	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		Debug|Any CPU = Debug|Any CPU
+		Release|Any CPU = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{19A68D85-D4E2-4895-B6AF-0AEA9B4277D8}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{19A68D85-D4E2-4895-B6AF-0AEA9B4277D8}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{19A68D85-D4E2-4895-B6AF-0AEA9B4277D8}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{19A68D85-D4E2-4895-B6AF-0AEA9B4277D8}.Release|Any CPU.Build.0 = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(SolutionProperties) = preSolution
+		HideSolutionNode = FALSE
+	EndGlobalSection
+	GlobalSection(ExtensibilityGlobals) = postSolution
+		SolutionGuid = {8B583704-1FCF-4A73-8EC2-E299094D749B}
+	EndGlobalSection
+EndGlobal
