@@ -5,9 +5,11 @@ public class Settings
 {
     private static Settings _instance;
     private static readonly object _lock = new object();
+
     public string BotUsername { get; set; }
     public string AccessToken { get; set; }
     public string ChannelName { get; set; }
+    public bool TrainingMode { get; set; }
     public List<string>? AllowedUsers { get; set; }
     public List<string>? BlockedUsers { get; set; }
     public int MinSentenceWords { get; set; }
@@ -61,6 +63,7 @@ public class Settings
             BotUsername = settings.BotUsername;
             AccessToken = settings.AccessToken;
             ChannelName = settings.ChannelName;
+            TrainingMode = settings.TrainingMode;
             AllowedUsers = settings.AllowedUsers;
             BlockedUsers = settings.BlockedUsers;
             MinSentenceWords = settings.MinSentenceWords;
@@ -90,6 +93,7 @@ public class Settings
             BotUsername = "botUsername",
             AccessToken = "accessToken",
             ChannelName = "channelName",
+            TrainingMode = false,
             AllowedUsers = new List<string> { "allowedUser1", "allowedUser2" },
             BlockedUsers = new List<string> { "blockedUser1", "blockedUser2" },
             MinSentenceWords = -1,

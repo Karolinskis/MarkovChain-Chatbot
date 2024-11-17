@@ -70,6 +70,13 @@ public class Chatbot
             return;
         }
 
+        if (Settings.Instance?.BlockedUsers?.Contains(e.ChatMessage.Username) == true)
+        {
+            return;
+        }
+
+        Console.WriteLine($"{e.ChatMessage.Username} - {e.ChatMessage.Message}");
+
         // Train the Markov Chain with the received message
         _markovChain.Train(e.ChatMessage.Message);
     }
