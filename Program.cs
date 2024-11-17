@@ -11,14 +11,12 @@ class Program
     {
         string settingsPath = "settings.json";
 
-        Settings settings = new Settings();
+        Settings.Instance.LoadSettings(settingsPath);
 
-        settings.LoadSettings(settingsPath);
-
-        Database database = new Database($"{settings.BotUsername}_markovchain.db");
+        Database database = new Database($"{Settings.Instance.BotUsername}_{Settings.Instance.ChannelName}_markovchain.db");
         MarkovChainGenerator markovChain = new MarkovChainGenerator(database);
 
-        var chatbot = new Chatbot(settings.BotUsername, settings.AccessToken, settings.ChannelName, markovChain);
+        var chatbot = new Chatbot(Settings.Instance.BotUsername, Settings.Instance.AccessToken, Settings.Instance.ChannelName, markovChain);
 
         while (true)
         {

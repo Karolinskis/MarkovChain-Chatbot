@@ -3,6 +3,8 @@ using System.Text.Json.Serialization;
 
 public class Settings
 {
+    private static Settings _instance;
+    private static readonly object _lock = new object();
     public string BotUsername { get; set; }
     public string AccessToken { get; set; }
     public string ChannelName { get; set; }
@@ -14,6 +16,24 @@ public class Settings
     public int AutoGenerateInterval { get; set; }
     public bool AllowGenerateCommand { get; set; }
     public List<string> GenerateCommands { get; set; }
+
+    public Settings() { }
+
+    public static Settings Instance
+    {
+        get
+        {
+            lock (_lock)
+            {
+                if (_instance == null)
+                {
+                    _instance = new Settings();
+                }
+
+                return _instance;
+            }
+        }
+    }
 
     /// <summary>
     /// Loads settings from the specified path
