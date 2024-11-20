@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using MarkovChainChatbot.Utils;
 
 public class MarkovChainGenerator
 {
@@ -13,6 +14,8 @@ public class MarkovChainGenerator
 
     public void Train(string input)
     {
+        input = MessageParser.CleanMessage(input);
+
         var words = input.Split(' ');
         if (words.Length < 2) return;
 
