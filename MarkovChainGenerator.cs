@@ -12,25 +12,28 @@ public class MarkovChainGenerator
         _database = database;
     }
 
-    public void Train(string input)
+    public void Train(List<string> tokens)
     {
-        input = MessageParser.CleanMessage(input);
+        if (tokens.Count < 2) return;
 
-        var words = input.Split(' ');
-        if (words.Length < 2) return;
+        _database.AddStart(tokens[0], tokens[1]);
 
-        _database.AddStart(words[0], words[1]);
-
-        for (int i = 0; i < words.Length - 2; i++)
+        for (int i = 0; i < tokens.Count - 2; i++)
         {
-            _database.AddGrammar(words[i], words[i + 1], words[i + 2]);
+            _database.AddGrammar(tokens[i], tokens[i + 1], tokens[i + 2]);
+        }
+
+        // Add <END> to the grammar at the end of the sentence
+        if (tokens.Count >= 2)
+        {
+            _database.AddGrammar(tokens[tokens.Count - 2], tokens[tokens.Count - 1], "<END>");
         }
     }
 
-    public string GenerateSentence(string startWord, int length)
+    public List<string> GenerateSentence(string startWord, int length)
     {
         var words = startWord.Split(' ');
-        if (words.Length < 2) return startWord;
+        if (words.Length < 2) return startWord.Split(' ').ToList();
 
         var currentWord1 = words[0];
         var currentWord2 = words[1];
@@ -40,14 +43,14 @@ public class MarkovChainGenerator
         for (int i = 0; i < length - 2; i++)
         {
             var nextWord = _database.GetNextWord(currentWord1, currentWord2);
-            if (nextWord == null) break;
+            if (string.IsNullOrEmpty(nextWord) || nextWord == "<END>") break;
 
             result.Add(nextWord);
             currentWord1 = currentWord2;
             currentWord2 = nextWord;
         }
 
-        return string.Join(" ", result);
+        return result;
     }
 
     public string GenerateMessage()
@@ -55,6 +58,6 @@ public class MarkovChainGenerator
         var startWord = _database.GetStartWord();
         if (startWord == null) return string.Empty;
 
-        return GenerateSentence(startWord, 10);
+        return Tokenizer.Detokenize(GenerateSentence(startWord, Settings.Instance.MaxSentenceWords));
     }
 }

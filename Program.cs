@@ -1,4 +1,5 @@
 ﻿using System;
+using MarkovChainChatbot.Utils;
 using TwitchLib.Client;
 using TwitchLib.Client.Events;
 using TwitchLib.Client.Models;
@@ -22,8 +23,10 @@ class Program
         {
             System.Threading.Thread.Sleep(Settings.Instance.AutoGenerateInterval * 1000);
             var message = markovChain.GenerateMessage();
-            Console.WriteLine($"Generated message: {message}");
-            chatbot.SendMessage(message);
+            if (MessageParser.IsCleanMessage(message))
+            {
+                chatbot.SendMessage(message);
+            }
         }
 
         Console.WriteLine("Press any key to exit...");

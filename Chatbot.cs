@@ -77,8 +77,10 @@ public class Chatbot
 
         Console.WriteLine($"{e.ChatMessage.Username} - {e.ChatMessage.Message}");
 
-        // Train the Markov Chain with the received message
-        _markovChain.Train(e.ChatMessage.Message);
+        List<string> tokens = Tokenizer.Tokenize(e.ChatMessage.Message);
+
+        // Train the Markov Chain with the tokenized message
+        _markovChain.Train(tokens);
     }
 
     private void Client_OnWhisperReceived(object? sender, OnWhisperReceivedArgs e)
