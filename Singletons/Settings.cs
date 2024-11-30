@@ -1,3 +1,4 @@
+using System.Text;
 using System.Text.Json;
 using System.Text.Json.Serialization;
 
@@ -18,6 +19,8 @@ public class Settings
     public int AutoGenerateInterval { get; set; }
     public bool AllowGenerateCommand { get; set; }
     public List<string> GenerateCommands { get; set; }
+    public bool EnableDiscordLogging { get; set; }
+    public string? DiscordWebhookUrl { get; set; }
 
     public Settings() { }
 
@@ -53,6 +56,7 @@ public class Settings
         try
         {
             string json = File.ReadAllText(path);
+
             var settings = JsonSerializer.Deserialize<Settings>(json);
 
             if (settings == null)
@@ -72,6 +76,8 @@ public class Settings
             AutoGenerateInterval = settings.AutoGenerateInterval;
             AllowGenerateCommand = settings.AllowGenerateCommand;
             GenerateCommands = settings.GenerateCommands;
+            EnableDiscordLogging = settings.EnableDiscordLogging;
+            DiscordWebhookUrl = settings.DiscordWebhookUrl;
         }
         catch (JsonException e)
         {
@@ -101,7 +107,9 @@ public class Settings
             AutoGenerateMessages = true,
             AutoGenerateInterval = 5000,
             AllowGenerateCommand = true,
-            GenerateCommands = new List<string> { "!generate" }
+            GenerateCommands = new List<string> { "!generate" },
+            EnableDiscordLogging = false,
+            DiscordWebhookUrl = "discordWebhookUrl"
         };
 
         var json = JsonSerializer.Serialize(settings);

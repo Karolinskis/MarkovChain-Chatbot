@@ -43,7 +43,7 @@ public class Chatbot
             return;
         }
 
-        Console.WriteLine($"Sending message: {message}");
+        Logger.Instance.Log($"Sending message: {message}");
         _client.SendMessage(_client.JoinedChannels[0], message);
     }
 
@@ -54,12 +54,12 @@ public class Chatbot
 
     private void Client_OnConnected(object? sender, OnConnectedArgs e)
     {
-        Console.WriteLine($"Connected to Twitch");
+        Logger.Instance.Log($"Connected to Twitch", sendToDiscord: false);
     }
 
     private void Client_OnJoinedChannel(object? sender, OnJoinedChannelArgs e)
     {
-        Console.WriteLine($"Joined channel {e.Channel}");
+        Logger.Instance.Log($"Joined channel {e.Channel}", sendToDiscord: false);
     }
 
     private void Client_OnMessageReceived(object? sender, OnMessageReceivedArgs e)
@@ -75,7 +75,7 @@ public class Chatbot
             return;
         }
 
-        Console.WriteLine($"{e.ChatMessage.Username} - {e.ChatMessage.Message}");
+        Logger.Instance.Log($"Received message: {e.ChatMessage.Username} - {e.ChatMessage.Message}", sendToDiscord: false);
 
         List<string> tokens = Tokenizer.Tokenize(e.ChatMessage.Message);
 
