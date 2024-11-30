@@ -1,6 +1,6 @@
 # Markov chain chatbot
 
-This is a simple Twitch chatbot that uses a Markov chain to generate responses based on what it learned from Twitch chat. It is heavely inspired by [TwitchMarkovChain](https://github.com/tomaarsen/TwitchMarkovChain).
+This is a simple Twitch chatbot that uses a Markov chain to generate responses based on what it learned from Twitch chat. It is heavily inspired by [TwitchMarkovChain](https://github.com/tomaarsen/TwitchMarkovChain).
 
 ## Configuration
 
@@ -19,7 +19,9 @@ The bot is configured using a `settings.json` file. The file should look like th
   "AutoGenerateMessages": true,
   "AutoGenerateInterval": 5000,
   "AllowGenerateCommand": true,
-  "GenerateCommands": ["!generate"]
+  "GenerateCommands": ["!generate"],
+  "EnableDiscordLogging": true,
+  "DiscordWebhookUrl": "webhookUrl"
 }
 ```
 
@@ -35,6 +37,8 @@ The bot is configured using a `settings.json` file. The file should look like th
 - `AutoGenerateInterval`: The interval in seconds between automatically generated messages.
 - `AllowGenerateCommand`: If set to `true`, users can generate messages using the commands in `GenerateCommands`.
 - `GenerateCommands`: A list of commands that users can use to generate messages.
+- `EnableDiscordLogging`: If set to `true`, the bot will log messages to a Discord webhook.
+- `DiscordWebhookUrl`: The URL of the Discord webhook.
 
 ## Contributing
 
