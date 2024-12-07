@@ -35,9 +35,12 @@ public class Logger
         string formattedMessage = $"[{DateTime.Now:yyyy-MM-dd HH:mm:ss}] {message}";
         Console.WriteLine(formattedMessage);
 
-        if (sendToDiscord && _enableDiscordLogging || !string.IsNullOrEmpty(_discordWebhookUrl))
+        if (_enableDiscordLogging)
         {
-            SendDiscordMessage(message).Wait();
+            if (sendToDiscord && !string.IsNullOrEmpty(_discordWebhookUrl))
+            {
+                SendDiscordMessage(message).Wait();
+            }
         }
     }
 
