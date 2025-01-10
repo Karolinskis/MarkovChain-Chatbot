@@ -19,6 +19,7 @@ public class Settings
     public int AutoGenerateInterval { get; set; }
     public bool AllowGenerateCommand { get; set; }
     public List<string> GenerateCommands { get; set; }
+    public List<string> BlacklistedWords { get; set; }
     public bool EnableDiscordLogging { get; set; }
     public string? DiscordWebhookUrl { get; set; }
 
@@ -76,6 +77,7 @@ public class Settings
             AutoGenerateInterval = settings.AutoGenerateInterval;
             AllowGenerateCommand = settings.AllowGenerateCommand;
             GenerateCommands = settings.GenerateCommands;
+            BlacklistedWords = settings.BlacklistedWords;
             EnableDiscordLogging = settings.EnableDiscordLogging;
             DiscordWebhookUrl = settings.DiscordWebhookUrl;
         }
@@ -108,6 +110,7 @@ public class Settings
             AutoGenerateInterval = 5000,
             AllowGenerateCommand = true,
             GenerateCommands = new List<string> { "!generate" },
+            BlacklistedWords = new List<string> { },
             EnableDiscordLogging = false,
             DiscordWebhookUrl = "discordWebhookUrl"
         };

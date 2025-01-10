@@ -20,6 +20,7 @@ The bot is configured using a `settings.json` file. The file should look like th
   "AutoGenerateInterval": 5000,
   "AllowGenerateCommand": true,
   "GenerateCommands": ["!generate"],
+  "BlacklistedWords": ["blacklistedWord1", "blacklistedWord2"],
   "EnableDiscordLogging": true,
   "DiscordWebhookUrl": "webhookUrl"
 }
@@ -37,6 +38,7 @@ The bot is configured using a `settings.json` file. The file should look like th
 - `AutoGenerateInterval`: The interval in seconds between automatically generated messages.
 - `AllowGenerateCommand`: If set to `true`, users can generate messages using the commands in `GenerateCommands`.
 - `GenerateCommands`: A list of commands that users can use to generate messages.
+- `BlacklistedWords`: A list of words that the bot will ignore when generating chat messages.
 - `EnableDiscordLogging`: If set to `true`, the bot will log messages to a Discord webhook.
 - `DiscordWebhookUrl`: The URL of the Discord webhook.
 
