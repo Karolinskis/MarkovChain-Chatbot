@@ -30,7 +30,7 @@ public class Logger
         }
     }
 
-    public void Log(string message, bool sendToDiscord = true)
+    public void Log(string message, bool sendToDiscord = false)
     {
         string formattedMessage = $"[{DateTime.Now:yyyy-MM-dd HH:mm:ss}] {message}";
         Console.WriteLine(formattedMessage);

@@ -16,21 +16,21 @@ namespace MarkovChainChatbot.Utils
             // Check for links
             if (Regex.IsMatch(message, @"http[^\s]+"))
             {
-                Logger.Instance.Log($"Blocked message: {message}. Reason: contains link");
+                Logger.Instance.Log($"Blocked message: {message}. Reason: contains link", sendToDiscord: false);
                 return false;
             }
 
             // Check for mentions
             if (Regex.IsMatch(message, @"@\w+"))
             {
-                Logger.Instance.Log($"Blocked message: {message}. Reason: contains mention");
+                Logger.Instance.Log($"Blocked message: {message}. Reason: contains mention", sendToDiscord: false);
                 return false;
             }
 
             // Check for commands
             if (Regex.IsMatch(message, @"^[!.,]\w+"))
             {
-                Logger.Instance.Log($"Blocked message: {message}. Reason: contains command");
+                Logger.Instance.Log($"Blocked message: {message}. Reason: contains command", sendToDiscord: false);
                 return false;
             }
 

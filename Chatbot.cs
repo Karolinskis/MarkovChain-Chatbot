@@ -43,7 +43,7 @@ public class Chatbot
             return;
         }
 
-        Logger.Instance.Log($"Sending message: {message}");
+        Logger.Instance.Log($"Sending message: {message}", sendToDiscord: true);
         _client.SendMessage(_client.JoinedChannels[0], message);
     }
 
