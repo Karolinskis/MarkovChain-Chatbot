@@ -16,7 +16,7 @@ namespace MarkovChainChatbot.Utils
             message = Normalize(message);
 
             // Check for links
-            if (Regex.IsMatch(message, @"http[^\s]+"))
+            if (Regex.IsMatch(message, @"(http[^\s]+|www\.[^\s]+|[^\s]+\.[a-z]{2,})"))
             {
                 Logger.Instance.Log($"Blocked message: {message}. Reason: contains link", sendToDiscord: false);
                 return false;
