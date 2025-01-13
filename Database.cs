@@ -159,7 +159,7 @@ public class Database
             return '_';
         }
 
-        return MessageParser.NormalizeCharacter(character);
+        return MessageParser.Normalize(character);
     }
 
     private char GetRandomCharacter()

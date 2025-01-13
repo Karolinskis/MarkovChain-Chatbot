@@ -13,6 +13,8 @@ namespace MarkovChainChatbot.Utils
         /// <returns>True if the message is clean, otherwise false.</returns>
         public static bool IsCleanMessage(string message)
         {
+            message = Normalize(message);
+
             // Check for links
             if (Regex.IsMatch(message, @"http[^\s]+"))
             {
@@ -34,10 +36,30 @@ namespace MarkovChainChatbot.Utils
                 return false;
             }
 
-            // Trim whitespace
-            message = message.Trim();
-
             return true;
+        }
+
+        /// <summary>
+        /// Normalizes a string by replacing diacritical marks (accents) with their base characters.
+        /// </summary>
+        /// <param name="input">String to normalize.</param>
+        /// <returns>The normalized string without diacritical marks.</returns>
+        public static string Normalize(string input)
+        {
+            StringBuilder normalized = new StringBuilder();
+            foreach (char c in input)
+            {
+                if (char.IsSurrogate(c) || char.IsSymbol(c) || char.IsPunctuation(c))
+                {
+                    normalized.Append(c);
+                }
+                else
+                {
+                    normalized.Append(Normalize(c));
+                }
+            }
+
+            return normalized.ToString();
         }
 
         /// <summary>
@@ -45,7 +67,7 @@ namespace MarkovChainChatbot.Utils
         /// </summary>
         /// <param name="character">The character to normalize.</param>
         /// <returns>The normalized character without diacritical marks, or the original character if no normalization is needed.</returns>
-        public static char NormalizeCharacter(char character)
+        public static char Normalize(char character)
         {
             string normalized = character.ToString().Normalize(NormalizationForm.FormD);
             foreach (char c in normalized)

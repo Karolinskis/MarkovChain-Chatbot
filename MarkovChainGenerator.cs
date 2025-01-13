@@ -49,9 +49,9 @@ public class MarkovChainGenerator
                 var nextWord = _database.GetNextWord(currentWord1, currentWord2);
                 if (string.IsNullOrEmpty(nextWord) || nextWord == "<END>") break;
 
-                if (_blacklistedWords.Contains(nextWord))
+                if (_blacklistedWords.Any(blacklistedWord => MessageParser.Normalize(nextWord).Contains(MessageParser.Normalize(blacklistedWord))))
                 {
-                    Logger.Instance.Log($"Sentence: {result}. Blacklisted word: {nextWord}", sendToDiscord: false);
+                    Logger.Instance.Log($"Sentence: {string.Join(" ", result)}. Blacklisted word: {nextWord}", sendToDiscord: false);
                     break;
                 }
 
@@ -60,7 +60,7 @@ public class MarkovChainGenerator
                 currentWord2 = nextWord;
             }
 
-            if (!result.Any(words => _blacklistedWords.Contains(words)))
+            if (!result.Any(words => _blacklistedWords.Contains(MessageParser.Normalize(words))))
             {
                 return result;
             }
