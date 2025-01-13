@@ -90,6 +90,6 @@ public class Tokenizer
 
     private static bool IsPunctuation(string token)
     {
-        return Punctuation.Any(regex => regex.IsMatch(token));
+        return Punctuation.Any(regex => regex.IsMatch(token)) && !EmoticonRegex.IsMatch(token);
     }
 }
