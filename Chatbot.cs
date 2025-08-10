@@ -77,6 +77,26 @@ public class Chatbot
 
         Logger.Instance.Log($"Received message: {e.ChatMessage.Username} - {e.ChatMessage.Message}", sendToDiscord: false);
 
+        // Check for generate commands
+        if (Settings.Instance.AllowGenerateCommand &&
+            Settings.Instance.GenerateCommands != null &&
+            Settings.Instance.GenerateCommands.Any(cmd => e.ChatMessage.Message.StartsWith(cmd, StringComparison.OrdinalIgnoreCase)))
+        {
+            // Check if user is allowed to use generate commands
+            if (Settings.Instance.AllowedUsers != null &&
+            (Settings.Instance.AllowedUsers.Contains("*") ||
+             Settings.Instance.AllowedUsers.Contains(e.ChatMessage.Username, StringComparer.OrdinalIgnoreCase)))
+            {
+                var generatedMessage = _markovChain.GenerateMessage();
+                _client.SendReply(_client.JoinedChannels[0], e.ChatMessage.Id, generatedMessage);
+            }
+            else
+            {
+                Logger.Instance.Log($"User {e.ChatMessage.Username} attempted to use generate command but is not allowed", sendToDiscord: false);
+            }
+            return; // Don't train on command messages
+        }
+
         List<string> tokens = Tokenizer.Tokenize(e.ChatMessage.Message);
 
         // Train the Markov Chain with the tokenized message
