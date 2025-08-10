@@ -10,7 +10,7 @@ class Program
 {
     static void Main(string[] args)
     {
-        string settingsPath = "settings.json";
+        string settingsPath = args.Length > 0 ? args[0] : "settings.json";
 
         Settings.Instance.LoadSettings(settingsPath);
 
