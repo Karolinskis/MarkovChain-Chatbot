@@ -72,15 +72,11 @@ public class Chatbot
         if (Settings.Instance?.BlockedUsers?.Contains(e.ChatMessage.Username) == true)
             return;
 
-        if (!MessageParser.IsCleanMessage(e.ChatMessage.Message))
-            return;
-
-        Logger.Instance.Log($"Received message: {e.ChatMessage.Username} - {e.ChatMessage.Message}", sendToDiscord: false);
-
         // Check for generate commands
         if (Settings.Instance.AllowGenerateCommand &&
             Settings.Instance.GenerateCommands != null &&
-            Settings.Instance.GenerateCommands.Any(cmd => e.ChatMessage.Message.StartsWith(cmd, StringComparison.OrdinalIgnoreCase)))
+            Settings.Instance.GenerateCommands.Any(cmd =>
+                e.ChatMessage.Message.TrimStart().StartsWith(cmd, StringComparison.OrdinalIgnoreCase)))
         {
             // Check if user is allowed to use generate commands
             if (Settings.Instance.AllowedUsers != null &&
@@ -96,6 +92,11 @@ public class Chatbot
             }
             return; // Don't train on command messages
         }
+
+        if (!MessageParser.IsCleanMessage(e.ChatMessage.Message))
+            return;
+
+        Logger.Instance.Log($"Received message: {e.ChatMessage.Username} - {e.ChatMessage.Message}", sendToDiscord: false);
 
         List<string> tokens = Tokenizer.Tokenize(e.ChatMessage.Message);
 
