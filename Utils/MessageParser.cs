@@ -15,6 +15,14 @@ namespace MarkovChainChatbot.Utils
         {
             message = Normalize(message);
 
+            // Block non-Latin messages
+            if (!Settings.Instance.AllowNonAsciiMessages &&
+                message.Any(c => c > 127))
+            {
+                Logger.Instance.Log($"Blocked message: {message}. Reason: contains non-ASCII characters", sendToDiscord: false);
+                return false;
+            }
+
             // Check for links
             if (Regex.IsMatch(message, @"(http[^\s]+|www\.[^\s]+|[^\s]+\.[a-z]{2,})"))
             {

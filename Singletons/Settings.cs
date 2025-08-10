@@ -22,6 +22,7 @@ public class Settings
     public List<string> BlacklistedWords { get; set; }
     public bool EnableDiscordLogging { get; set; }
     public string? DiscordWebhookUrl { get; set; }
+    public bool AllowNonAsciiMessages { get; set; }
 
     public Settings() { }
 
@@ -80,6 +81,7 @@ public class Settings
             BlacklistedWords = settings.BlacklistedWords;
             EnableDiscordLogging = settings.EnableDiscordLogging;
             DiscordWebhookUrl = settings.DiscordWebhookUrl;
+            AllowNonAsciiMessages = settings.AllowNonAsciiMessages;
         }
         catch (JsonException e)
         {
@@ -112,7 +114,8 @@ public class Settings
             GenerateCommands = new List<string> { "!generate" },
             BlacklistedWords = new List<string> { },
             EnableDiscordLogging = false,
-            DiscordWebhookUrl = "discordWebhookUrl"
+            DiscordWebhookUrl = "discordWebhookUrl",
+            AllowNonAsciiMessages = false
         };
 
         var json = JsonSerializer.Serialize(settings);

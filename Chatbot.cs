@@ -1,3 +1,4 @@
+using MarkovChainChatbot.Utils;
 using TwitchLib.Client;
 using TwitchLib.Client.Events;
 using TwitchLib.Client.Models;
@@ -66,14 +67,13 @@ public class Chatbot
     {
         // Ignore messages from the bot itself
         if (e.ChatMessage.Username == _client.TwitchUsername)
-        {
             return;
-        }
 
         if (Settings.Instance?.BlockedUsers?.Contains(e.ChatMessage.Username) == true)
-        {
             return;
-        }
+
+        if (!MessageParser.IsCleanMessage(e.ChatMessage.Message))
+            return;
 
         Logger.Instance.Log($"Received message: {e.ChatMessage.Username} - {e.ChatMessage.Message}", sendToDiscord: false);
 
