@@ -15,7 +15,12 @@ class Program
         Settings.Instance.LoadSettings(settingsPath);
 
         Database database = new Database($"{Settings.Instance.BotUsername}_{Settings.Instance.ChannelName}_markovchain.db");
-        MarkovChainGenerator markovChain = new MarkovChainGenerator(database, Settings.Instance.BlacklistedWords);
+
+        MarkovChainGenerator markovChain = new MarkovChainGenerator(
+            database: database,
+            blacklistedWords: Settings.Instance.BlacklistedWords,
+            maxSentenceWords: Settings.Instance.MaxSentenceWords
+        );
 
         var chatbot = new Chatbot(Settings.Instance.BotUsername, Settings.Instance.AccessToken, Settings.Instance.ChannelName, markovChain);
 

@@ -5,13 +5,16 @@ using MarkovChainChatbot.Utils;
 
 public class MarkovChainGenerator
 {
-    private Database _database;
-    private List<string> _blacklistedWords;
+    private readonly Database _database;
+    private readonly List<string> _normalizedBlacklistedWords;
+    private readonly int _maxSentenceWords;
+    private const int MaxGenerationAttempts = 10;
 
-    public MarkovChainGenerator(Database database, List<string> blacklistedWords)
+    public MarkovChainGenerator(Database database, List<string> blacklistedWords, int maxSentenceWords)
     {
         _database = database;
-        _blacklistedWords = blacklistedWords;
+        _maxSentenceWords = maxSentenceWords;
+        _normalizedBlacklistedWords = blacklistedWords?.Select(MessageParser.Normalize).ToList() ?? new List<string>();
     }
 
     public void Train(List<string> tokens)
@@ -25,57 +28,71 @@ public class MarkovChainGenerator
             _database.AddGrammar(tokens[i], tokens[i + 1], tokens[i + 2]);
         }
 
-        // Add <END> to the grammar at the end of the sentence
+        // <END> is used to signify the end of a sentence
         if (tokens.Count >= 2)
         {
             _database.AddGrammar(tokens[tokens.Count - 2], tokens[tokens.Count - 1], "<END>");
         }
     }
 
-    public List<string> GenerateSentence(string startWord, int length)
+    public string GenerateMessage()
     {
-        for (int attempt = 0; attempt < 3; attempt++)
+        for (int i = 0; i < MaxGenerationAttempts; i++)
         {
-            var words = startWord.Split(' ');
-            if (words.Length < 2) return startWord.Split(' ').ToList();
+            var startWordPair = _database.GetStartWord();
+            if (string.IsNullOrEmpty(startWordPair)) continue;
 
-            var currentWord1 = words[0];
-            var currentWord2 = words[1];
-
-            var result = new List<string> { currentWord1, currentWord2 };
-
-            for (int i = 0; i < length - 2; i++)
+            var sentence = TryGenerateSentence(startWordPair);
+            if (sentence.Any())
             {
-                var nextWord = _database.GetNextWord(currentWord1, currentWord2);
-                if (string.IsNullOrEmpty(nextWord) || nextWord == "<END>") break;
-
-                if (_blacklistedWords.Any(blacklistedWord => MessageParser.Normalize(nextWord).Contains(MessageParser.Normalize(blacklistedWord))))
-                {
-                    Logger.Instance.Log($"Sentence: {string.Join(" ", result)}. Blacklisted word: {nextWord}", sendToDiscord: false);
-                    break;
-                }
-
-                result.Add(nextWord);
-                currentWord1 = currentWord2;
-                currentWord2 = nextWord;
-            }
-
-            if (!result.Any(words => _blacklistedWords.Contains(MessageParser.Normalize(words))))
-            {
-                return result;
+                return Tokenizer.Detokenize(sentence);
             }
         }
 
-        Logger.Instance.Log($"Failed to generate sentence after 3 attempts. Start word: {startWord}", sendToDiscord: true);
-
-        return new List<string>();
+        Logger.Instance.Log($"Failed to generate a clean sentence after {MaxGenerationAttempts} attempts.", sendToDiscord: true);
+        return string.Empty;
     }
 
-    public string GenerateMessage()
+    private List<string> TryGenerateSentence(string startWordPair)
     {
-        var startWord = _database.GetStartWord();
-        if (startWord == null) return string.Empty;
+        var words = startWordPair.Split(' ');
+        if (words.Length < 2 || AreWordsBlacklisted(words))
+        {
+            return new List<string>();
+        }
 
-        return Tokenizer.Detokenize(GenerateSentence(startWord, Settings.Instance.MaxSentenceWords));
+        var result = new List<string>(words);
+        var currentWord1 = words[0];
+        var currentWord2 = words[1];
+
+        for (int i = 0; i < _maxSentenceWords - 2; i++)
+        {
+            var nextWord = _database.GetNextWord(currentWord1, currentWord2);
+            if (string.IsNullOrEmpty(nextWord) || nextWord == "<END>") break;
+
+            if (IsWordBlacklisted(nextWord))
+            {
+                Logger.Instance.Log($"Message: {string.Join(" ", result)}. Blacklisted word: {nextWord}", sendToDiscord: false);
+                return new List<string>();
+            }
+
+            result.Add(nextWord);
+            currentWord1 = currentWord2;
+            currentWord2 = nextWord;
+        }
+
+        return result;
+    }
+
+    private bool IsWordBlacklisted(string word)
+    {
+        if (_normalizedBlacklistedWords.Count == 0) return false;
+        var normalizedWord = MessageParser.Normalize(word);
+        return _normalizedBlacklistedWords.Contains(normalizedWord);
+    }
+
+    private bool AreWordsBlacklisted(string[] words)
+    {
+        return words.Any(IsWordBlacklisted);
     }
 }
