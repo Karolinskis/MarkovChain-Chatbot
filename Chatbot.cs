@@ -93,9 +93,6 @@ public class Chatbot
             return; // Don't train on command messages
         }
 
-        if (!MessageParser.IsCleanMessage(e.ChatMessage.Message))
-            return;
-
         Logger.Instance.Log($"Received message: {e.ChatMessage.Username} - {e.ChatMessage.Message}", sendToDiscord: false);
 
         List<string> tokens = Tokenizer.Tokenize(e.ChatMessage.Message);
