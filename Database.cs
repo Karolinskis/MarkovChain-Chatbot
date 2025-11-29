@@ -12,7 +12,7 @@ public class Database
     public Database(string databasePath)
     {
         //_databasePath = databasePath;
-        _connectionString = $"Data Source={databasePath};Version=3;";
+        _connectionString = $"Data Source={databasePath};Version=3;Journal Mode=WAL;";
         InitializeDatabase(databasePath);
     }
 
