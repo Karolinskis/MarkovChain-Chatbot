@@ -53,6 +53,11 @@ public class MarkovChainGenerator
         return string.Empty;
     }
 
+    public Dictionary<string, int> GetStatistics()
+    {
+        return _database.GetStatistics();
+    }
+
     private List<string> TryGenerateSentence(string startWordPair)
     {
         var words = startWordPair.Split(' ');

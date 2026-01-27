@@ -72,6 +72,15 @@ public class Chatbot
         if (Settings.Instance?.BlockedUsers?.Contains(e.ChatMessage.Username) == true)
             return;
 
+        if (e.ChatMessage.Message.TrimStart().Equals("!stats", StringComparison.OrdinalIgnoreCase))
+        {
+            var stats = _markovChain.GetStatistics();
+            string statsMessage = $"Dataset Statistics: Start Pairs: {stats["TotalStartPairs"]}, Grammar Entries: {stats["TotalGrammarEntries"]}";
+            _client.SendReply(_client.JoinedChannels[0], e.ChatMessage.Id, statsMessage);
+            return; // Don't train on stats command
+        }
+
+
         // Check for generate commands
         if (Settings.Instance.AllowGenerateCommand &&
             Settings.Instance.GenerateCommands != null &&

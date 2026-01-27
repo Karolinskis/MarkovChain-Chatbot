@@ -152,6 +152,47 @@ public class Database
         return string.Empty;
     }
 
+    public Dictionary<string, int> GetStatistics()
+    {
+        var stats = new Dictionary<string, int>();
+
+        using (var connection = new SQLiteConnection(_connectionString))
+        {
+            connection.Open();
+
+            int totalStartPairs = 0;
+            foreach (var firstChar in _characters)
+            {
+                string tableName = $"MarkovStart{firstChar}";
+                string query = $"SELECT COUNT(*) FROM {tableName};";
+
+                using (var command = new SQLiteCommand(query, connection))
+                {
+                    totalStartPairs += Convert.ToInt32(command.ExecuteScalar());
+                }
+            }
+            stats["TotalStartPairs"] = totalStartPairs;
+
+            int totalGrammarEntries = 0;
+            foreach (var firstChar in _characters)
+            {
+                foreach (var secondChar in _characters)
+                {
+                    string tableName = $"MarkovGrammar{firstChar}{secondChar}";
+                    string query = $"SELECT COUNT(*) FROM {tableName};";
+
+                    using (var command = new SQLiteCommand(query, connection))
+                    {
+                        totalGrammarEntries += Convert.ToInt32(command.ExecuteScalar());
+                    }
+                }
+            }
+            stats["TotalGrammarEntries"] = totalGrammarEntries;
+        }
+
+        return stats;
+    }
+
     private char GetSuffix(char character)
     {
         if (!char.IsLetter(character))
