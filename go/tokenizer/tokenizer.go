@@ -1,0 +1,97 @@
+package tokenizer
+
+import (
+	"regexp"
+	"strings"
+)
+
+var emoticonRegex = regexp.MustCompile(`(?i)([<>]?[:;=8][\-o*']?[\)\]\(\[dDpP/:\}\{@|\\]|[\)\]\(\[dDpP/:\}\{@|\\][\-o*']?[:;=8][<>]?|<3)`)
+
+var startingQuotes = []*regexp.Regexp{
+	regexp.MustCompile("([«\"'„]|[`]+)"),
+	regexp.MustCompile("(``)"),
+	regexp.MustCompile(`(?i)(')(?!re|ve|ll|m|t|s|d)(\w)\b`),
+}
+
+var punctuation = []*regexp.Regexp{
+	regexp.MustCompile(`'`),
+	regexp.MustCompile(`([^\.])(\.)([\]\)}>»\x{201D}\x{2019}]*)\s*$`),
+	regexp.MustCompile(`([:,])([^\d])`),
+	regexp.MustCompile(`([:,])$`),
+	regexp.MustCompile(`\.{2,}`),
+	regexp.MustCompile(`[;#$%&]`),
+	regexp.MustCompile(`([^\.])(\.)([\]\)}>\"']*)\s*$`),
+	regexp.MustCompile(`[?!]`),
+	regexp.MustCompile(`([^'])'` + " "),
+	regexp.MustCompile(`[*]`),
+}
+
+// Tokenize splits a sentence into tokens, preserving emoticons.
+func Tokenize(sentence string) []string {
+	var output []string
+
+	for {
+		loc := emoticonRegex.FindStringIndex(sentence)
+		if loc == nil {
+			break
+		}
+
+		before := strings.TrimSpace(sentence[:loc[0]])
+		emoticon := sentence[loc[0]:loc[1]]
+		sentence = strings.TrimSpace(sentence[loc[1]:])
+
+		output = append(output, tokenizePart(before)...)
+		output = append(output, emoticon)
+	}
+
+	output = append(output, tokenizePart(sentence)...)
+	return output
+}
+
+func tokenizePart(sentence string) []string {
+	for _, re := range startingQuotes {
+		sentence = re.ReplaceAllString(sentence, " $1 ")
+	}
+
+	for _, re := range punctuation {
+		sentence = re.ReplaceAllString(sentence, " $0 ")
+	}
+
+	var tokens []string
+	for _, t := range strings.Fields(sentence) {
+		if t != "" {
+			tokens = append(tokens, t)
+		}
+	}
+	return tokens
+}
+
+// Detokenize joins tokens back into a sentence, attaching punctuation.
+func Detokenize(tokens []string) string {
+	if len(tokens) == 0 {
+		return ""
+	}
+
+	var result []string
+	for i, token := range tokens {
+		if i > 0 && isPunctuation(token) {
+			result[len(result)-1] += token
+		} else {
+			result = append(result, token)
+		}
+	}
+
+	return strings.Join(result, " ")
+}
+
+func isPunctuation(token string) bool {
+	if emoticonRegex.MatchString(token) {
+		return false
+	}
+	for _, re := range punctuation {
+		if re.MatchString(token) {
+			return true
+		}
+	}
+	return false
+}
