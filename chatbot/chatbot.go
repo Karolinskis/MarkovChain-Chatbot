@@ -6,6 +6,7 @@ import (
 	"strings"
 
 	"markovchain-chatbot/discord"
+	"markovchain-chatbot/filter"
 	"markovchain-chatbot/markov"
 	"markovchain-chatbot/settings"
 	"markovchain-chatbot/tokenizer"
@@ -101,6 +102,10 @@ func (b *Chatbot) onMessageReceived(message twitch.PrivateMessage) {
 	}
 
 	slog.Debug("message received", "user", message.User.Name, "message", message.Message)
+
+	if !filter.IsCleanMessage(message.Message, b.cfg.AllowNonAsciiMessages) {
+		return
+	}
 
 	tokens := tokenizer.Tokenize(message.Message)
 	if err := b.markovChain.Train(tokens); err != nil {
