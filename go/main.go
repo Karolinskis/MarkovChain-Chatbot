@@ -42,7 +42,7 @@ func main() {
 
 	bot := chatbot.New(cfg, markovChain)
 
-	if !cfg.TrainingMode {
+	if !cfg.TrainingMode && cfg.AutoGenerateMessages {
 		for {
 			time.Sleep(time.Duration(cfg.AutoGenerateInterval) * time.Second)
 			message := markovChain.GenerateMessage()
