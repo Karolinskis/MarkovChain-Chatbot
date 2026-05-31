@@ -7,15 +7,15 @@ import (
 
 var emoticonRegex = regexp.MustCompile(`(?i)([<>]?[:;=8][\-o*']?[\)\]\(\[dDpP/:\}\{@|\\]|[\)\]\(\[dDpP/:\}\{@|\\][\-o*']?[:;=8][<>]?|<3)`)
 
-var startingQuotes = []*regexp.Regexp{
-	regexp.MustCompile("([«\"'„]|[`]+)"),
-	regexp.MustCompile("(``)"),
-	regexp.MustCompile(`(?i)(')(?!re|ve|ll|m|t|s|d)(\w)\b`),
-}
-
 type punctuationRule struct {
 	re          *regexp.Regexp
 	replacement string
+}
+
+var startingQuotes = []punctuationRule{
+	{regexp.MustCompile("([«\"'„]|[`]+)"), " $1 "},
+	{regexp.MustCompile("(``)"), " $1 "},
+	{regexp.MustCompile(`(?i)(')([^\Wrvlmtsd])`), " $1 $2"},
 }
 
 var punctuation = []punctuationRule{
@@ -54,8 +54,8 @@ func Tokenize(sentence string) []string {
 }
 
 func tokenizePart(sentence string) []string {
-	for _, re := range startingQuotes {
-		sentence = re.ReplaceAllString(sentence, " $1 ")
+	for _, rule := range startingQuotes {
+		sentence = rule.re.ReplaceAllString(sentence, rule.replacement)
 	}
 
 	for _, rule := range punctuation {
