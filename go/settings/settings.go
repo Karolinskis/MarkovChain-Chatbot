@@ -9,7 +9,7 @@ import (
 )
 
 type Settings struct {
-	BotUsername            string   `json:"BotUsername"`
+	BotUsername           string   `json:"BotUsername"`
 	AccessToken           string   `json:"AccessToken"`
 	ChannelName           string   `json:"ChannelName"`
 	TrainingMode          bool     `json:"TrainingMode"`
@@ -52,7 +52,7 @@ func Load(path string) (*Settings, error) {
 
 func writeDefaults(path string) error {
 	cfg := Settings{
-		BotUsername:            "botUsername",
+		BotUsername:           "botUsername",
 		AccessToken:           "accessToken",
 		ChannelName:           "channelName",
 		TrainingMode:          false,
