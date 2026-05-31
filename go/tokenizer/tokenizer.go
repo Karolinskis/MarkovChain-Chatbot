@@ -19,7 +19,7 @@ type punctuationRule struct {
 }
 
 var punctuation = []punctuationRule{
-	{regexp.MustCompile(`'`), " ' "},
+	{regexp.MustCompile(`\x{2019}`), " \u2019 "},
 	{regexp.MustCompile(`([^\.])(\.)([\]\)}>»\x{201D}\x{2019}]*)\s*$`), "$1 $2$3 "},
 	{regexp.MustCompile(`([:,])([^\d])`), " $1 $2"},
 	{regexp.MustCompile(`([:,])$`), " $1 "},
