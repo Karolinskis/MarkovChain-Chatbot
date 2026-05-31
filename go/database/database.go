@@ -4,7 +4,6 @@ import (
 	"database/sql"
 	"fmt"
 	"math/rand"
-	"strings"
 	"unicode"
 
 	"markovchain-chatbot/filter"
@@ -69,7 +68,7 @@ func (d *Database) initialize() error {
 }
 
 func (d *Database) AddStart(word1, word2 string) error {
-	tableName := fmt.Sprintf("MarkovStart%c", getSuffix(rune(word1[0])))
+	tableName := fmt.Sprintf("MarkovStart%c", getSuffix(firstRune(word1)))
 	query := fmt.Sprintf(`
 		INSERT INTO %s (word1, word2, count)
 		VALUES (?, ?, 1)
@@ -79,7 +78,7 @@ func (d *Database) AddStart(word1, word2 string) error {
 }
 
 func (d *Database) AddGrammar(word1, word2, word3 string) error {
-	tableName := fmt.Sprintf("MarkovGrammar%c%c", getSuffix(rune(word1[0])), getSuffix(rune(word2[0])))
+	tableName := fmt.Sprintf("MarkovGrammar%c%c", getSuffix(firstRune(word1)), getSuffix(firstRune(word2)))
 	query := fmt.Sprintf(`
 		INSERT INTO %s (word1, word2, word3, count)
 		VALUES (?, ?, ?, 1)
@@ -93,7 +92,7 @@ func (d *Database) GetNextWord(word1, word2 string) string {
 		return ""
 	}
 
-	tableName := fmt.Sprintf("MarkovGrammar%c%c", getSuffix(rune(word1[0])), getSuffix(rune(word2[0])))
+	tableName := fmt.Sprintf("MarkovGrammar%c%c", getSuffix(firstRune(word1)), getSuffix(firstRune(word2)))
 	query := fmt.Sprintf(`
 		SELECT word3 FROM %s
 		WHERE word1 = ? AND word2 = ?
@@ -158,6 +157,16 @@ func getSuffix(character rune) byte {
 	if !unicode.IsLetter(character) {
 		return '_'
 	}
-	normalized := filter.NormalizeChar(character)
-	return byte(strings.ToUpper(string(normalized))[0])
+	normalized := unicode.ToUpper(filter.NormalizeChar(character))
+	if normalized >= 'A' && normalized <= 'Z' {
+		return byte(normalized)
+	}
+	return '_'
+}
+
+func firstRune(s string) rune {
+	for _, r := range s {
+		return r
+	}
+	return '_'
 }
