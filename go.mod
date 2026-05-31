@@ -1,6 +1,6 @@
 module markovchain-chatbot
 
-go 1.22
+go 1.26
 
 require (
 	github.com/gempir/go-twitch-irc/v4 v4.2.0
