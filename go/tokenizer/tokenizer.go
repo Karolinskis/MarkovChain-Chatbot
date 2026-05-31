@@ -13,17 +13,22 @@ var startingQuotes = []*regexp.Regexp{
 	regexp.MustCompile(`(?i)(')(?!re|ve|ll|m|t|s|d)(\w)\b`),
 }
 
-var punctuation = []*regexp.Regexp{
-	regexp.MustCompile(`'`),
-	regexp.MustCompile(`([^\.])(\.)([\]\)}>»\x{201D}\x{2019}]*)\s*$`),
-	regexp.MustCompile(`([:,])([^\d])`),
-	regexp.MustCompile(`([:,])$`),
-	regexp.MustCompile(`\.{2,}`),
-	regexp.MustCompile(`[;#$%&]`),
-	regexp.MustCompile(`([^\.])(\.)([\]\)}>\"']*)\s*$`),
-	regexp.MustCompile(`[?!]`),
-	regexp.MustCompile(`([^'])'` + " "),
-	regexp.MustCompile(`[*]`),
+type punctuationRule struct {
+	re          *regexp.Regexp
+	replacement string
+}
+
+var punctuation = []punctuationRule{
+	{regexp.MustCompile(`'`), " ' "},
+	{regexp.MustCompile(`([^\.])(\.)([\]\)}>»\x{201D}\x{2019}]*)\s*$`), "$1 $2$3 "},
+	{regexp.MustCompile(`([:,])([^\d])`), " $1 $2"},
+	{regexp.MustCompile(`([:,])$`), " $1 "},
+	{regexp.MustCompile(`\.{2,}`), " $0 "},
+	{regexp.MustCompile(`[;#$%&]`), " $0 "},
+	{regexp.MustCompile(`([^\.])(\.)([\]\)}>\"']*)\s*$`), "$1 $2$3 "},
+	{regexp.MustCompile(`[?!]`), " $0 "},
+	{regexp.MustCompile(`([^'])'` + " "), "$1 ' "},
+	{regexp.MustCompile(`[*]`), " $0 "},
 }
 
 // Tokenize splits a sentence into tokens, preserving emoticons.
@@ -53,8 +58,8 @@ func tokenizePart(sentence string) []string {
 		sentence = re.ReplaceAllString(sentence, " $1 ")
 	}
 
-	for _, re := range punctuation {
-		sentence = re.ReplaceAllString(sentence, " $0 ")
+	for _, rule := range punctuation {
+		sentence = rule.re.ReplaceAllString(sentence, rule.replacement)
 	}
 
 	var tokens []string
@@ -88,8 +93,8 @@ func isPunctuation(token string) bool {
 	if emoticonRegex.MatchString(token) {
 		return false
 	}
-	for _, re := range punctuation {
-		if re.MatchString(token) {
+	for _, rule := range punctuation {
+		if rule.re.MatchString(token) {
 			return true
 		}
 	}
