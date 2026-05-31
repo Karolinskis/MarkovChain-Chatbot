@@ -108,19 +108,22 @@ func (d *Database) GetNextWord(word1, word2 string) string {
 }
 
 func (d *Database) GetStartWord() string {
-	idx := rand.Intn(len(characters))
-	tableName := fmt.Sprintf("MarkovStart%c", characters[idx])
-	query := fmt.Sprintf(`
-		SELECT word1, word2 FROM %s
-		ORDER BY RANDOM()
-		LIMIT 1;`, tableName)
+	// Shuffle table order to avoid bias, then pick from the first non empty table
+	order := rand.Perm(len(characters))
+	for _, idx := range order {
+		tableName := fmt.Sprintf("MarkovStart%c", characters[idx])
+		query := fmt.Sprintf(`
+			SELECT word1, word2 FROM %s
+			ORDER BY RANDOM()
+			LIMIT 1;`, tableName)
 
-	var word1, word2 string
-	err := d.db.QueryRow(query).Scan(&word1, &word2)
-	if err != nil {
-		return ""
+		var word1, word2 string
+		err := d.db.QueryRow(query).Scan(&word1, &word2)
+		if err == nil {
+			return word1 + " " + word2
+		}
 	}
-	return word1 + " " + word2
+	return ""
 }
 
 func (d *Database) GetStatistics() map[string]int {
