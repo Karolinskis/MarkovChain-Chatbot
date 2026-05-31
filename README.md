@@ -1,46 +1,95 @@
-# Markov chain chatbot
+# Markov Chain Chatbot
 
-This is a simple Twitch chatbot that uses a Markov chain to generate responses based on what it learned from Twitch chat. It is heavily inspired by [TwitchMarkovChain](https://github.com/tomaarsen/TwitchMarkovChain).
+A Twitch chatbot that uses a Markov chain to generate messages based on what it learns from chat. Inspired by [TwitchMarkovChain](https://github.com/tomaarsen/TwitchMarkovChain).
+
+## Features
+
+- Learns from Twitch chat messages in realtime
+- Generates messages using a second order Markov chain
+- Configurable auto posting on a timer
+- Chat commands for generation (`!generate`, etc.)
+- Blacklisted word filtering with Unicode normalization
+- Discord webhook notifications for generated messages
+- SQLite storage (pure Go, no CGO required)
+- Training-only mode for building a dataset without posting
+
+## Requirements
+
+- Go 1.26+
+- A Twitch account for the bot with an OAuth token
+
+## Build & Run
+
+```bash
+go build -o markovchain-chatbot
+./markovchain-chatbot settings.json
+```
+
+The settings file path defaults to `settings.json` if not provided.
 
 ## Configuration
 
-The bot is configured using a `settings.json` file. The file should look like this
+Create a `settings.json` file:
 
 ```json
 {
   "BotUsername": "botUsername",
-  "AccessToken": "accessToken",
+  "AccessToken": "oauth:your_token_here",
   "ChannelName": "channelName",
-  "TrainingMode": true,
-  "AllowedUsers": ["allowedUser1", "allowedUser2"],
-  "BlockedUsers": ["blockedUser1", "blockedUser2"],
+  "TrainingMode": false,
+  "AllowedUsers": ["*"],
+  "BlockedUsers": ["nightbot", "streamelements"],
   "MinSentenceWords": -1,
-  "MaxSentenceWords": 20,
+  "MaxSentenceWords": 25,
   "AutoGenerateMessages": true,
-  "AutoGenerateInterval": 5000,
+  "AutoGenerateInterval": 180,
   "AllowGenerateCommand": true,
   "GenerateCommands": ["!generate"],
-  "BlacklistedWords": ["blacklistedWord1", "blacklistedWord2"],
-  "EnableDiscordLogging": true,
-  "DiscordWebhookUrl": "webhookUrl"
+  "BlacklistedWords": [],
+  "EnableDiscordLogging": false,
+  "DiscordWebhookUrl": "",
+  "AllowNonAsciiMessages": false
 }
 ```
 
-- `BotUsername`: The username of the bot account.
-- `AccessToken`: The access token of the bot account.
-- `ChannelName`: The name of the channel the bot should join.
-- `TrainingMode`: If set to `true`, the bot will only learn from chat messages, but not generate any messages. If set to `false`, the bot will learn from chat messages and generate messages.
-- `AllowedUsers`: A list of users that are allowed to use the bot.
-- `BlockedUsers`: A list of users that the chatbot will ignore when learning from chat messages.
-- `MinSentenceWords`: The minimum amount of words a generated sentence should have.
-- `MaxSentenceWords`: The maximum amount of words a generated sentence should have.
-- `AutoGenerateMessages`: If set to `true`, the bot will automatically generate messages.
-- `AutoGenerateInterval`: The interval in seconds between automatically generated messages.
-- `AllowGenerateCommand`: If set to `true`, users can generate messages using the commands in `GenerateCommands`.
-- `GenerateCommands`: A list of commands that users can use to generate messages.
-- `BlacklistedWords`: A list of words that the bot will ignore when generating chat messages.
-- `EnableDiscordLogging`: If set to `true`, the bot will log messages to a Discord webhook.
-- `DiscordWebhookUrl`: The URL of the Discord webhook.
+| Field | Description |
+|-------|-------------|
+| `BotUsername` | Twitch username of the bot account |
+| `AccessToken` | OAuth token for the bot account |
+| `ChannelName` | Twitch channel to join |
+| `TrainingMode` | If `true`, only learns — never posts messages |
+| `AllowedUsers` | Users allowed to use commands (`*` = everyone) |
+| `BlockedUsers` | Users ignored for training (bots, etc.) |
+| `MinSentenceWords` | Minimum words in a generated sentence (`-1` = no limit) |
+| `MaxSentenceWords` | Maximum words in a generated sentence |
+| `AutoGenerateMessages` | Automatically post messages on a timer |
+| `AutoGenerateInterval` | Seconds between auto-generated messages |
+| `AllowGenerateCommand` | Allow chat commands to trigger generation |
+| `GenerateCommands` | Commands that trigger generation |
+| `BlacklistedWords` | Words that will never appear in generated messages |
+| `EnableDiscordLogging` | Forward generated messages to a Discord webhook |
+| `DiscordWebhookUrl` | Discord webhook URL |
+| `AllowNonAsciiMessages` | Allow non-ASCII characters in generated messages |
+
+## Chat Commands
+
+| Command | Description |
+|---------|-------------|
+| `!stats` | Shows dataset statistics (start pairs, grammar entries) |
+| Custom generate commands | Generates and replies with a Markov chain message |
+
+## Project Structure
+
+```
+├── main.go           # Entry point
+├── chatbot/          # Twitch IRC client and message handling
+├── markov/           # Markov chain training and generation
+├── database/         # SQLite persistence layer
+├── tokenizer/        # Sentence tokenization and detokenization
+├── filter/           # Message filtering (links, mentions, commands)
+├── discord/          # Discord webhook notifications
+└── settings/         # JSON config loading
+```
 
 ## Contributing
 
