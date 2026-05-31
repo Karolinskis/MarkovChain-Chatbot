@@ -12,9 +12,18 @@ import (
 	"markovchain-chatbot/filter"
 	"markovchain-chatbot/markov"
 	"markovchain-chatbot/settings"
+
+	"github.com/lmittmann/tint"
+	"github.com/mattn/go-isatty"
 )
 
 func main() {
+	slog.SetDefault(slog.New(tint.NewHandler(os.Stderr, &tint.Options{
+		Level:      slog.LevelDebug,
+		TimeFormat: time.Kitchen,
+		NoColor:    !isatty.IsTerminal(os.Stderr.Fd()),
+	})))
+
 	settingsPath := "settings.json"
 	if len(os.Args) > 1 {
 		settingsPath = os.Args[1]
