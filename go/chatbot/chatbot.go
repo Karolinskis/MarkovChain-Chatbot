@@ -89,7 +89,9 @@ func (b *Chatbot) onMessageReceived(message twitch.PrivateMessage) {
 			if strings.HasPrefix(strings.ToLower(trimmedMsg), strings.ToLower(cmd)) {
 				if b.cfg.IsUserAllowed(message.User.Name) {
 					generatedMessage := b.markovChain.GenerateMessage()
-					b.client.Reply(b.channelName, message.ID, generatedMessage)
+					if generatedMessage != "" {
+						b.client.Reply(b.channelName, message.ID, generatedMessage)
+					}
 				} else {
 					slog.Info("generate command denied", "user", message.User.Name)
 				}
