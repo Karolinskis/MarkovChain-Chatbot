@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"os"
+	"strings"
 )
 
 type Settings struct {
@@ -78,7 +79,7 @@ func writeDefaults(path string) error {
 
 func (s *Settings) IsUserBlocked(username string) bool {
 	for _, u := range s.BlockedUsers {
-		if u == username {
+		if strings.EqualFold(u, username) {
 			return true
 		}
 	}
@@ -87,7 +88,7 @@ func (s *Settings) IsUserBlocked(username string) bool {
 
 func (s *Settings) IsUserAllowed(username string) bool {
 	for _, u := range s.AllowedUsers {
-		if u == "*" || u == username {
+		if u == "*" || strings.EqualFold(u, username) {
 			return true
 		}
 	}
