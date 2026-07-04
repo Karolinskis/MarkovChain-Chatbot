@@ -47,7 +47,7 @@ func main() {
 
 	markovChain := markov.NewGenerator(db, cfg.BlacklistedWords, cfg.MaxSentenceWords)
 
-	bot := chatbot.New(cfg, markovChain)
+	bot := chatbot.New(cfg, db, markovChain)
 
 	if !cfg.TrainingMode && cfg.AutoGenerateMessages {
 		for {

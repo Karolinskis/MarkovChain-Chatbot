@@ -5,6 +5,7 @@ import (
 	"log/slog"
 	"strings"
 
+	"markovchain-chatbot/database"
 	"markovchain-chatbot/discord"
 	"markovchain-chatbot/markov"
 	"markovchain-chatbot/settings"
@@ -15,17 +16,19 @@ import (
 
 type Chatbot struct {
 	client      *twitch.Client
+	db          *database.Database
 	markovChain *markov.Generator
 	cfg         *settings.Settings
 	channelName string
 	botUsername string
 }
 
-func New(cfg *settings.Settings, markovChain *markov.Generator) *Chatbot {
+func New(cfg *settings.Settings, db *database.Database, markovChain *markov.Generator) *Chatbot {
 	client := twitch.NewClient(cfg.BotUsername, "oauth:"+strings.TrimPrefix(cfg.AccessToken, "oauth:"))
 
 	bot := &Chatbot{
 		client:      client,
+		db:          db,
 		markovChain: markovChain,
 		cfg:         cfg,
 		channelName: cfg.ChannelName,
@@ -42,6 +45,10 @@ func New(cfg *settings.Settings, markovChain *markov.Generator) *Chatbot {
 
 	client.OnPrivateMessage(func(message twitch.PrivateMessage) {
 		bot.onMessageReceived(message)
+	})
+
+	client.OnClearMessage(func(message twitch.ClearMessage) {
+		bot.onMessageDeleted(message)
 	})
 
 	client.Join(cfg.ChannelName)
@@ -66,6 +73,8 @@ func (b *Chatbot) SendMessage(message string) {
 }
 
 func (b *Chatbot) onMessageReceived(message twitch.PrivateMessage) {
+	b.saveMessageNode(message)
+
 	if strings.EqualFold(message.User.Name, b.botUsername) {
 		return
 	}
@@ -103,7 +112,28 @@ func (b *Chatbot) onMessageReceived(message twitch.PrivateMessage) {
 	slog.Debug("message received", "user", message.User.Name, "message", message.Message)
 
 	tokens := tokenizer.Tokenize(message.Message)
-	if err := b.markovChain.Train(tokens); err != nil {
+	if err := b.markovChain.TrainMessage(message.ID, tokens); err != nil {
 		slog.Error("failed to train", "error", err)
 	}
+}
+
+func (b *Chatbot) saveMessageNode(message twitch.PrivateMessage) {
+	parentMessageID := ""
+	if message.Reply != nil {
+		parentMessageID = message.Reply.ParentMsgID
+	}
+
+	isBotMessage := strings.EqualFold(message.User.Name, b.botUsername)
+	if err := b.db.SaveMessageChainNode(message.ID, parentMessageID, isBotMessage); err != nil {
+		slog.Error("failed to persist message chain node", "messageID", message.ID, "error", err)
+	}
+}
+
+func (b *Chatbot) onMessageDeleted(message twitch.ClearMessage) {
+	if err := b.db.DeleteMessageChain(message.TargetMsgID); err != nil {
+		slog.Error("failed to delete message chain", "messageID", message.TargetMsgID, "error", err)
+		return
+	}
+
+	slog.Debug("deleted message chain from database", "rootMessageID", message.TargetMsgID)
 }

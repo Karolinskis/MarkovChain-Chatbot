@@ -30,22 +30,22 @@ func NewGenerator(db *database.Database, blacklistedWords []string, maxSentenceW
 	}
 }
 
-func (g *Generator) Train(tokens []string) error {
+func (g *Generator) TrainMessage(messageID string, tokens []string) error {
 	if len(tokens) < 2 {
 		return nil
 	}
 
-	if err := g.db.AddStart(tokens[0], tokens[1]); err != nil {
+	if err := g.db.AddStartForMessage(messageID, tokens[0], tokens[1]); err != nil {
 		return err
 	}
 
 	for i := 0; i < len(tokens)-2; i++ {
-		if err := g.db.AddGrammar(tokens[i], tokens[i+1], tokens[i+2]); err != nil {
+		if err := g.db.AddGrammarForMessage(messageID, tokens[i], tokens[i+1], tokens[i+2]); err != nil {
 			return err
 		}
 	}
 
-	return g.db.AddGrammar(tokens[len(tokens)-2], tokens[len(tokens)-1], "<END>")
+	return g.db.AddGrammarForMessage(messageID, tokens[len(tokens)-2], tokens[len(tokens)-1], "<END>")
 }
 
 func (g *Generator) GenerateMessage() string {
