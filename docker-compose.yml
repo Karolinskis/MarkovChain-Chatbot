@@ -1,0 +1,21 @@
+services:
+  bot:
+    build: .
+    container_name: markovbot
+    restart: unless-stopped
+    volumes:
+      - ./settings.json:/settings.json:ro
+    networks:
+      - backend
+
+  migrate:
+    build: .
+    entrypoint: ["/migrate"]
+    volumes:
+      - ./settings.json:/settings.json:ro
+    networks:
+      - backend
+
+networks:
+  backend:
+    external: true
