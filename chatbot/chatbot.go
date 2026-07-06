@@ -7,7 +7,6 @@ import (
 	"strings"
 
 	"markovchain-chatbot/database"
-	"markovchain-chatbot/discord"
 	"markovchain-chatbot/markov"
 	"markovchain-chatbot/settings"
 	"markovchain-chatbot/tokenizer"
@@ -71,7 +70,6 @@ func (b *Chatbot) SendMessage(message string) {
 	}
 
 	slog.Info("sending message", "message", message)
-	discord.Notify(message)
 	b.client.Say(b.channelName, message)
 }
 
