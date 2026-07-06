@@ -1,6 +1,7 @@
 package chatbot
 
 import (
+	"context"
 	"fmt"
 	"log/slog"
 	"strings"
@@ -21,9 +22,10 @@ type Chatbot struct {
 	cfg         *settings.Settings
 	channelName string
 	botUsername string
+	channelID   int
 }
 
-func New(cfg *settings.Settings, db *database.Database, markovChain *markov.Generator) *Chatbot {
+func New(cfg *settings.Settings, db *database.Database, markovChain *markov.Generator, channelID int) *Chatbot {
 	client := twitch.NewClient(cfg.BotUsername, "oauth:"+strings.TrimPrefix(cfg.AccessToken, "oauth:"))
 
 	bot := &Chatbot{
@@ -33,6 +35,7 @@ func New(cfg *settings.Settings, db *database.Database, markovChain *markov.Gene
 		cfg:         cfg,
 		channelName: cfg.ChannelName,
 		botUsername: strings.ToLower(cfg.BotUsername),
+		channelID:   channelID,
 	}
 
 	client.OnConnect(func() {
@@ -73,7 +76,8 @@ func (b *Chatbot) SendMessage(message string) {
 }
 
 func (b *Chatbot) onMessageReceived(message twitch.PrivateMessage) {
-	b.saveMessageNode(message)
+	ctx := context.Background()
+	b.saveMessageNode(ctx, message)
 
 	if strings.EqualFold(message.User.Name, b.botUsername) {
 		return
@@ -86,7 +90,7 @@ func (b *Chatbot) onMessageReceived(message twitch.PrivateMessage) {
 	trimmedMsg := strings.TrimSpace(message.Message)
 
 	if strings.EqualFold(trimmedMsg, "!stats") {
-		stats := b.markovChain.GetStatistics()
+		stats := b.markovChain.GetStatistics(ctx)
 		statsMessage := fmt.Sprintf("Dataset Statistics: Start Pairs: %d, Grammar Entries: %d",
 			stats["TotalStartPairs"], stats["TotalGrammarEntries"])
 		b.client.Reply(b.channelName, message.ID, statsMessage)
@@ -97,7 +101,7 @@ func (b *Chatbot) onMessageReceived(message twitch.PrivateMessage) {
 		for _, cmd := range b.cfg.GenerateCommands {
 			if strings.HasPrefix(strings.ToLower(trimmedMsg), strings.ToLower(cmd)) {
 				if b.cfg.IsUserAllowed(message.User.Name) {
-					generatedMessage := b.markovChain.GenerateMessage()
+					generatedMessage := b.markovChain.GenerateMessage(ctx)
 					if generatedMessage != "" {
 						b.client.Reply(b.channelName, message.ID, generatedMessage)
 					}
@@ -112,25 +116,26 @@ func (b *Chatbot) onMessageReceived(message twitch.PrivateMessage) {
 	slog.Debug("message received", "user", message.User.Name, "message", message.Message)
 
 	tokens := tokenizer.Tokenize(message.Message)
-	if err := b.markovChain.TrainMessage(message.ID, tokens); err != nil {
+	if err := b.markovChain.TrainMessage(ctx, tokens); err != nil {
 		slog.Error("failed to train", "error", err)
 	}
 }
 
-func (b *Chatbot) saveMessageNode(message twitch.PrivateMessage) {
+func (b *Chatbot) saveMessageNode(ctx context.Context, message twitch.PrivateMessage) {
 	parentMessageID := ""
 	if message.Reply != nil {
 		parentMessageID = message.Reply.ParentMsgID
 	}
 
 	isBotMessage := strings.EqualFold(message.User.Name, b.botUsername)
-	if err := b.db.SaveMessageChainNode(message.ID, parentMessageID, isBotMessage); err != nil {
+	if err := b.db.SaveMessageChainNode(ctx, b.channelID, message.ID, parentMessageID, message.Message, isBotMessage); err != nil {
 		slog.Error("failed to persist message chain node", "messageID", message.ID, "error", err)
 	}
 }
 
 func (b *Chatbot) onMessageDeleted(message twitch.ClearMessage) {
-	if err := b.db.DeleteMessageChain(message.TargetMsgID); err != nil {
+	ctx := context.Background()
+	if err := b.db.DeleteMessageChain(ctx, b.channelID, message.TargetMsgID, tokenizer.Tokenize); err != nil {
 		slog.Error("failed to delete message chain", "messageID", message.TargetMsgID, "error", err)
 		return
 	}

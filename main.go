@@ -1,9 +1,11 @@
 package main
 
 import (
-	"fmt"
+	"context"
 	"log/slog"
 	"os"
+	"os/signal"
+	"syscall"
 	"time"
 
 	"markovchain-chatbot/chatbot"
@@ -37,28 +39,42 @@ func main() {
 		discord.Init(cfg.DiscordWebhookURL)
 	}
 
-	dbPath := fmt.Sprintf("%s_%s_markovchain.db", cfg.BotUsername, cfg.ChannelName)
-	db, err := database.New(dbPath)
+	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
+	defer stop()
+
+	db, err := database.New(ctx, cfg.DatabaseURL)
 	if err != nil {
 		slog.Error("failed to initialize database", "error", err)
 		os.Exit(1)
 	}
 	defer db.Close()
 
-	markovChain := markov.NewGenerator(db, cfg.BlacklistedWords, cfg.MaxSentenceWords)
-
-	bot := chatbot.New(cfg, db, markovChain)
-
-	if !cfg.TrainingMode && cfg.AutoGenerateMessages {
-		for {
-			time.Sleep(time.Duration(cfg.AutoGenerateInterval) * time.Second)
-			message := markovChain.GenerateMessage()
-			if filter.IsCleanMessage(message, cfg.AllowNonAsciiMessages) {
-				bot.SendMessage(message)
-			}
-		}
+	channelID, err := db.EnsureChannel(ctx, cfg.BotUsername, cfg.ChannelName)
+	if err != nil {
+		slog.Error("failed to ensure channel", "error", err)
+		os.Exit(1)
 	}
 
-	fmt.Println("Press Enter to exit...")
-	fmt.Scanln()
+	markovChain := markov.NewGenerator(db, channelID, cfg.BlacklistedWords, cfg.MaxSentenceWords)
+
+	bot := chatbot.New(cfg, db, markovChain, channelID)
+
+	if !cfg.TrainingMode && cfg.AutoGenerateMessages {
+		go func() {
+			for {
+				select {
+				case <-ctx.Done():
+					return
+				case <-time.After(time.Duration(cfg.AutoGenerateInterval) * time.Second):
+					message := markovChain.GenerateMessage(ctx)
+					if filter.IsCleanMessage(message, cfg.AllowNonAsciiMessages) {
+						bot.SendMessage(message)
+					}
+				}
+			}
+		}()
+	}
+
+	<-ctx.Done()
+	slog.Info("shutting down")
 }

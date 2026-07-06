@@ -1,6 +1,7 @@
 package markov
 
 import (
+	"context"
 	"log/slog"
 	"strings"
 
@@ -13,11 +14,12 @@ const maxGenerationAttempts = 10
 
 type Generator struct {
 	db                         *database.Database
+	channelID                  int
 	normalizedBlacklistedWords []string
 	maxSentenceWords           int
 }
 
-func NewGenerator(db *database.Database, blacklistedWords []string, maxSentenceWords int) *Generator {
+func NewGenerator(db *database.Database, channelID int, blacklistedWords []string, maxSentenceWords int) *Generator {
 	normalized := make([]string, 0, len(blacklistedWords))
 	for _, w := range blacklistedWords {
 		normalized = append(normalized, filter.Normalize(w))
@@ -25,37 +27,39 @@ func NewGenerator(db *database.Database, blacklistedWords []string, maxSentenceW
 
 	return &Generator{
 		db:                         db,
+		channelID:                  channelID,
 		normalizedBlacklistedWords: normalized,
 		maxSentenceWords:           maxSentenceWords,
 	}
 }
 
-func (g *Generator) TrainMessage(messageID string, tokens []string) error {
+func (g *Generator) TrainMessage(ctx context.Context, tokens []string) error {
 	if len(tokens) < 2 {
 		return nil
 	}
 
-	if err := g.db.AddStartForMessage(messageID, tokens[0], tokens[1]); err != nil {
+	if err := g.db.AddStart(ctx, g.channelID, tokens[0], tokens[1]); err != nil {
 		return err
 	}
 
 	for i := 0; i < len(tokens)-2; i++ {
-		if err := g.db.AddGrammarForMessage(messageID, tokens[i], tokens[i+1], tokens[i+2]); err != nil {
+		w3 := tokens[i+2]
+		if err := g.db.AddGrammar(ctx, g.channelID, tokens[i], tokens[i+1], &w3); err != nil {
 			return err
 		}
 	}
 
-	return g.db.AddGrammarForMessage(messageID, tokens[len(tokens)-2], tokens[len(tokens)-1], "<END>")
+	return g.db.AddGrammar(ctx, g.channelID, tokens[len(tokens)-2], tokens[len(tokens)-1], nil)
 }
 
-func (g *Generator) GenerateMessage() string {
+func (g *Generator) GenerateMessage(ctx context.Context) string {
 	for i := 0; i < maxGenerationAttempts; i++ {
-		startWordPair := g.db.GetStartWord()
+		startWordPair := g.db.GetStartWord(ctx, g.channelID)
 		if startWordPair == "" {
 			continue
 		}
 
-		sentence := g.tryGenerateSentence(startWordPair)
+		sentence := g.tryGenerateSentence(ctx, startWordPair)
 		if len(sentence) > 0 {
 			return tokenizer.Detokenize(sentence)
 		}
@@ -65,11 +69,11 @@ func (g *Generator) GenerateMessage() string {
 	return ""
 }
 
-func (g *Generator) GetStatistics() map[string]int {
-	return g.db.GetStatistics()
+func (g *Generator) GetStatistics(ctx context.Context) map[string]int {
+	return g.db.GetStatistics(ctx, g.channelID)
 }
 
-func (g *Generator) tryGenerateSentence(startWordPair string) []string {
+func (g *Generator) tryGenerateSentence(ctx context.Context, startWordPair string) []string {
 	words := strings.SplitN(startWordPair, " ", 2)
 	if len(words) < 2 || g.areWordsBlacklisted(words) {
 		return nil
@@ -81,8 +85,8 @@ func (g *Generator) tryGenerateSentence(startWordPair string) []string {
 	currentWord2 := words[1]
 
 	for i := 0; i < g.maxSentenceWords-2; i++ {
-		nextWord := g.db.GetNextWord(currentWord1, currentWord2)
-		if nextWord == "" || nextWord == "<END>" {
+		nextWord := g.db.GetNextWord(ctx, g.channelID, currentWord1, currentWord2)
+		if nextWord == "" {
 			break
 		}
 
