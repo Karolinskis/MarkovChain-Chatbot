@@ -10,6 +10,8 @@ import (
 
 type Settings struct {
 	DatabaseURL           string   `json:"DatabaseURL"`
+	HelixClientID         string   `json:"HelixClientID"`
+	HelixClientSecret     string   `json:"HelixClientSecret"`
 	BotUsername           string   `json:"BotUsername"`
 	AccessToken           string   `json:"AccessToken"`
 	ChannelName           string   `json:"ChannelName"`
@@ -54,6 +56,8 @@ func Load(path string) (*Settings, error) {
 func writeDefaults(path string) error {
 	cfg := Settings{
 		DatabaseURL:           "postgres://user:password@localhost:5432/markovbot",
+		HelixClientID:         "youtwitch_app_client_id",
+		HelixClientSecret:     "your_twitch_app_client_secret",
 		BotUsername:           "botUsername",
 		AccessToken:           "accessToken",
 		ChannelName:           "channelName",
