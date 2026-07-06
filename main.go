@@ -10,9 +10,7 @@ import (
 
 	"markovchain-chatbot/chatbot"
 	"markovchain-chatbot/database"
-	"markovchain-chatbot/filter"
 	"markovchain-chatbot/helix"
-	"markovchain-chatbot/markov"
 	"markovchain-chatbot/settings"
 
 	"github.com/lmittmann/tint"
@@ -45,53 +43,24 @@ func main() {
 	}
 	defer db.Close()
 
-	channelID, err := db.EnsureChannel(ctx, cfg.BotUsername, cfg.ChannelName)
-	if err != nil {
-		slog.Error("failed to ensure channel", "error", err)
-		os.Exit(1)
-	}
-
-	markovChain := markov.NewGenerator(db, channelID, cfg.BlacklistedWords, cfg.MaxSentenceWords)
-
-	bot := chatbot.New(cfg, db, markovChain, channelID)
-
-	var helixClient *helix.Client
+	var live chatbot.LiveChecker
 	if cfg.HelixClientID != "" && cfg.HelixClientSecret != "" {
-		helixClient, err = helix.New(cfg.HelixClientID, cfg.HelixClientSecret)
+		helixClient, err := helix.New(cfg.HelixClientID, cfg.HelixClientSecret)
 		if err != nil {
 			slog.Error("failed to create helix client", "error", err)
 			os.Exit(1)
 		}
-		slog.Info("live detection enabled", "channel", cfg.ChannelName)
+		live = helixClient.LiveChannels
+		slog.Info("live detection enabled")
 	} else {
-		slog.Warn("helix credentials not set, auto-generate will run unconditionally")
+		slog.Warn("helix credentials not set, all channels treated as always live")
 	}
 
-	if !cfg.TrainingMode && cfg.AutoGenerateMessages {
-		go func() {
-			for {
-				select {
-				case <-ctx.Done():
-					return
-				case <-time.After(time.Duration(cfg.AutoGenerateInterval) * time.Second):
-					if helixClient != nil {
-						statuses, err := helixClient.LiveChannels([]string{cfg.ChannelName})
-						if err != nil {
-							slog.Warn("failed to check stream status", "error", err)
-							continue
-						}
-						if !statuses[cfg.ChannelName] {
-							slog.Debug("stream offline, skipping auto generate")
-							continue
-						}
-					}
-					message := markovChain.GenerateMessage(ctx)
-					if filter.IsCleanMessage(message, cfg.AllowNonAsciiMessages) {
-						bot.SendMessage(message)
-					}
-				}
-			}
-		}()
+	for _, botCfg := range cfg.Bots {
+		if _, err := chatbot.New(ctx, botCfg, db, live); err != nil {
+			slog.Error("failed to start bot", "bot", botCfg.BotUsername, "error", err)
+			os.Exit(1)
+		}
 	}
 
 	<-ctx.Done()

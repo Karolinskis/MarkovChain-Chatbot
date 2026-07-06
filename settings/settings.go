@@ -9,11 +9,19 @@ import (
 )
 
 type Settings struct {
-	DatabaseURL           string   `json:"DatabaseURL"`
-	HelixClientID         string   `json:"HelixClientID"`
-	HelixClientSecret     string   `json:"HelixClientSecret"`
-	BotUsername           string   `json:"BotUsername"`
-	AccessToken           string   `json:"AccessToken"`
+	DatabaseURL       string      `json:"DatabaseURL"`
+	HelixClientID     string      `json:"HelixClientID"`
+	HelixClientSecret string      `json:"HelixClientSecret"`
+	Bots              []BotConfig `json:"Bots"`
+}
+
+type BotConfig struct {
+	BotUsername string          `json:"BotUsername"`
+	AccessToken string          `json:"AccessToken"`
+	Channels    []ChannelConfig `json:"Channels"`
+}
+
+type ChannelConfig struct {
 	ChannelName           string   `json:"ChannelName"`
 	TrainingMode          bool     `json:"TrainingMode"`
 	AllowedUsers          []string `json:"AllowedUsers"`
@@ -53,23 +61,31 @@ func Load(path string) (*Settings, error) {
 
 func writeDefaults(path string) error {
 	cfg := Settings{
-		DatabaseURL:           "postgres://user:password@localhost:5432/markovbot",
-		HelixClientID:         "youtwitch_app_client_id",
-		HelixClientSecret:     "your_twitch_app_client_secret",
-		BotUsername:           "botUsername",
-		AccessToken:           "accessToken",
-		ChannelName:           "channelName",
-		TrainingMode:          false,
-		AllowedUsers:          []string{"allowedUser1", "allowedUser2"},
-		BlockedUsers:          []string{"blockedUser1", "blockedUser2"},
-		MinSentenceWords:      -1,
-		MaxSentenceWords:      20,
-		AutoGenerateMessages:  true,
-		AutoGenerateInterval:  5000,
-		AllowGenerateCommand:  true,
-		GenerateCommands:      []string{"!generate"},
-		BlacklistedWords:      []string{},
-		AllowNonAsciiMessages: false,
+		DatabaseURL:       "postgres://user:password@localhost:5432/markovbot",
+		HelixClientID:     "your_twitch_app_client_id",
+		HelixClientSecret: "your_twitch_app_client_secret",
+		Bots: []BotConfig{
+			{
+				BotUsername: "botUsername",
+				AccessToken: "accessToken",
+				Channels: []ChannelConfig{
+					{
+						ChannelName:           "channelName",
+						TrainingMode:          false,
+						AllowedUsers:          []string{"allowedUser1", "allowedUser2"},
+						BlockedUsers:          []string{"blockedUser1", "blockedUser2"},
+						MinSentenceWords:      -1,
+						MaxSentenceWords:      20,
+						AutoGenerateMessages:  true,
+						AutoGenerateInterval:  5000,
+						AllowGenerateCommand:  true,
+						GenerateCommands:      []string{"!generate"},
+						BlacklistedWords:      []string{},
+						AllowNonAsciiMessages: false,
+					},
+				},
+			},
+		},
 	}
 
 	data, err := json.MarshalIndent(&cfg, "", "  ")
@@ -79,8 +95,8 @@ func writeDefaults(path string) error {
 	return os.WriteFile(path, data, 0644)
 }
 
-func (s *Settings) IsUserBlocked(username string) bool {
-	for _, u := range s.BlockedUsers {
+func (c *ChannelConfig) IsUserBlocked(username string) bool {
+	for _, u := range c.BlockedUsers {
 		if strings.EqualFold(u, username) {
 			return true
 		}
@@ -88,8 +104,8 @@ func (s *Settings) IsUserBlocked(username string) bool {
 	return false
 }
 
-func (s *Settings) IsUserAllowed(username string) bool {
-	for _, u := range s.AllowedUsers {
+func (c *ChannelConfig) IsUserAllowed(username string) bool {
+	for _, u := range c.AllowedUsers {
 		if u == "*" || strings.EqualFold(u, username) {
 			return true
 		}
