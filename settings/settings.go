@@ -9,6 +9,7 @@ import (
 )
 
 type Settings struct {
+	DatabaseURL           string   `json:"DatabaseURL"`
 	BotUsername           string   `json:"BotUsername"`
 	AccessToken           string   `json:"AccessToken"`
 	ChannelName           string   `json:"ChannelName"`
@@ -52,6 +53,7 @@ func Load(path string) (*Settings, error) {
 
 func writeDefaults(path string) error {
 	cfg := Settings{
+		DatabaseURL:           "postgres://user:password@localhost:5432/markovbot",
 		BotUsername:           "botUsername",
 		AccessToken:           "accessToken",
 		ChannelName:           "channelName",
