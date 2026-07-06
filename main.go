@@ -10,7 +10,6 @@ import (
 
 	"markovchain-chatbot/chatbot"
 	"markovchain-chatbot/database"
-	"markovchain-chatbot/discord"
 	"markovchain-chatbot/filter"
 	"markovchain-chatbot/helix"
 	"markovchain-chatbot/markov"
@@ -34,10 +33,6 @@ func main() {
 	if err != nil {
 		slog.Error("failed to load settings", "error", err)
 		os.Exit(1)
-	}
-
-	if cfg.EnableDiscordLogging {
-		discord.Init(cfg.DiscordWebhookURL)
 	}
 
 	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)

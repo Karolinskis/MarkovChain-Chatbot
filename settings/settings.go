@@ -25,8 +25,6 @@ type Settings struct {
 	AllowGenerateCommand  bool     `json:"AllowGenerateCommand"`
 	GenerateCommands      []string `json:"GenerateCommands"`
 	BlacklistedWords      []string `json:"BlacklistedWords"`
-	EnableDiscordLogging  bool     `json:"EnableDiscordLogging"`
-	DiscordWebhookURL     string   `json:"DiscordWebhookUrl"`
 	AllowNonAsciiMessages bool     `json:"AllowNonAsciiMessages"`
 }
 
@@ -71,8 +69,6 @@ func writeDefaults(path string) error {
 		AllowGenerateCommand:  true,
 		GenerateCommands:      []string{"!generate"},
 		BlacklistedWords:      []string{},
-		EnableDiscordLogging:  false,
-		DiscordWebhookURL:     "",
 		AllowNonAsciiMessages: false,
 	}
 
