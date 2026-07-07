@@ -56,11 +56,18 @@ func main() {
 		slog.Warn("helix credentials not set, all channels treated as always live")
 	}
 
+	bots := make([]*chatbot.Bot, 0, len(cfg.Bots))
 	for _, botCfg := range cfg.Bots {
-		if _, err := chatbot.New(ctx, botCfg, db, live); err != nil {
+		bot, err := chatbot.New(ctx, botCfg, db, live)
+		if err != nil {
 			slog.Error("failed to start bot", "bot", botCfg.BotUsername, "error", err)
 			os.Exit(1)
 		}
+		bots = append(bots, bot)
+	}
+
+	if live != nil {
+		go chatbot.StartLivePoller(ctx, live, bots)
 	}
 
 	<-ctx.Done()

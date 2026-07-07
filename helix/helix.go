@@ -2,19 +2,16 @@ package helix
 
 import (
 	"fmt"
-	"sync"
-	"time"
+	"strings"
 
 	helixlib "github.com/nicklaw5/helix/v2"
 )
 
-const cacheTTL = 60 * time.Second
+// Helix allows at most 100 user logins per Get Streams request.
+const maxLoginsPerRequest = 100
 
 type Client struct {
-	api      *helixlib.Client
-	mu       sync.Mutex
-	cachedAt time.Time
-	cached   map[string]bool
+	api *helixlib.Client
 }
 
 func New(clientID, clientSecret string) (*Client, error) {
@@ -35,37 +32,37 @@ func New(clientID, clientSecret string) (*Client, error) {
 	return &Client{api: api}, nil
 }
 
-// LiveChannels returns a map of channel name to live status.
-// Results are cached for 60 seconds; repeated calls within that window
-// return the cached value without hitting the API.
+// LiveChannels returns a map of lowercase channel login to live status.
+// Every requested channel is present in the result; channels not currently
+// streaming map to false.
 func (c *Client) LiveChannels(channels []string) (map[string]bool, error) {
-	c.mu.Lock()
-	defer c.mu.Unlock()
-
-	if c.cached != nil && time.Since(c.cachedAt) < cacheTTL {
-		return c.cached, nil
-	}
-
 	result := make(map[string]bool, len(channels))
+	logins := make([]string, 0, len(channels))
 	for _, ch := range channels {
-		result[ch] = false
+		login := strings.ToLower(ch)
+		if _, ok := result[login]; !ok {
+			result[login] = false
+			logins = append(logins, login)
+		}
 	}
 
-	resp, err := c.api.GetStreams(&helixlib.StreamsParams{
-		UserLogins: channels,
-	})
-	if err != nil {
-		return nil, fmt.Errorf("get streams: %w", err)
-	}
-	if resp.ErrorMessage != "" {
-		return nil, fmt.Errorf("helix: %s", resp.ErrorMessage)
+	for start := 0; start < len(logins); start += maxLoginsPerRequest {
+		batch := logins[start:min(start+maxLoginsPerRequest, len(logins))]
+		resp, err := c.api.GetStreams(&helixlib.StreamsParams{
+			UserLogins: batch,
+			First:      len(batch),
+		})
+		if err != nil {
+			return nil, fmt.Errorf("get streams: %w", err)
+		}
+		if resp.ErrorMessage != "" {
+			return nil, fmt.Errorf("helix: %s", resp.ErrorMessage)
+		}
+
+		for _, stream := range resp.Data.Streams {
+			result[strings.ToLower(stream.UserLogin)] = true
+		}
 	}
 
-	for _, stream := range resp.Data.Streams {
-		result[stream.UserLogin] = true
-	}
-
-	c.cached = result
-	c.cachedAt = time.Now()
 	return result, nil
 }

@@ -65,9 +65,6 @@ func New(ctx context.Context, cfg settings.BotConfig, db *database.Database, liv
 
 	for name, ch := range bot.channels {
 		client.Join(name)
-		if live != nil {
-			go ch.startPoller(ctx, live)
-		}
 		if !ch.cfg.TrainingMode && ch.cfg.AutoGenerateMessages {
 			go ch.startAutoGenerate(ctx)
 		}
