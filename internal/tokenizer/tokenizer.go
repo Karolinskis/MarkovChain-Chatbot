@@ -3,6 +3,8 @@ package tokenizer
 import (
 	"regexp"
 	"strings"
+	"unicode"
+	"unicode/utf8"
 )
 
 var emoticonRegex = regexp.MustCompile(`(?i)([<>]?[:;=8][\-o*']?[\)\]\(\[dDpP/:\}\{@|\\]|[\)\]\(\[dDpP/:\}\{@|\\][\-o*']?[:;=8][<>]?|<3)`)
@@ -13,13 +15,13 @@ type punctuationRule struct {
 }
 
 var startingQuotes = []punctuationRule{
-	{regexp.MustCompile("([«\"'„]|[`]+)"), " $1 "},
+	{regexp.MustCompile("^([«\"'„]|[`]+)"), " $1 "},
 	{regexp.MustCompile("(``)"), " $1 "},
 	{regexp.MustCompile(`(?i)(')([^\Wrvlmtsd])`), " $1 $2"},
 }
 
 var punctuation = []punctuationRule{
-	{regexp.MustCompile(`\x{2019}`), " \u2019 "},
+	{regexp.MustCompile(`\x{2019}`), " ’ "},
 	{regexp.MustCompile(`([^\.])(\.)([\]\)}>»\x{201D}\x{2019}]*)\s*$`), "$1 $2$3 "},
 	{regexp.MustCompile(`([:,])([^\d])`), " $1 $2"},
 	{regexp.MustCompile(`([:,])$`), " $1 "},
@@ -36,7 +38,7 @@ func Tokenize(sentence string) []string {
 	var output []string
 
 	for {
-		loc := emoticonRegex.FindStringIndex(sentence)
+		loc := findEmoticon(sentence)
 		if loc == nil {
 			break
 		}
@@ -51,6 +53,41 @@ func Tokenize(sentence string) []string {
 
 	output = append(output, tokenizePart(sentence)...)
 	return output
+}
+
+// findEmoticon returns the position of the first emoticon bounded by
+// whitespace or string edges, so emoticon-like sequences inside words
+// (e.g. the "d;" in "good;") are not treated as emoticons.
+func findEmoticon(s string) []int {
+	offset := 0
+	for {
+		loc := emoticonRegex.FindStringIndex(s[offset:])
+		if loc == nil {
+			return nil
+		}
+
+		start, end := offset+loc[0], offset+loc[1]
+		if isSpaceBefore(s, start) && isSpaceAfter(s, end) {
+			return []int{start, end}
+		}
+		offset = start + 1
+	}
+}
+
+func isSpaceBefore(s string, i int) bool {
+	if i == 0 {
+		return true
+	}
+	r, _ := utf8.DecodeLastRuneInString(s[:i])
+	return unicode.IsSpace(r)
+}
+
+func isSpaceAfter(s string, i int) bool {
+	if i == len(s) {
+		return true
+	}
+	r, _ := utf8.DecodeRuneInString(s[i:])
+	return unicode.IsSpace(r)
 }
 
 func tokenizePart(sentence string) []string {
@@ -71,6 +108,16 @@ func tokenizePart(sentence string) []string {
 	return tokens
 }
 
+// prefixTokens attach to the following token when detokenizing.
+var prefixTokens = map[string]bool{
+	"#":  true,
+	`"`:  true,
+	"«":  true,
+	"„":  true,
+	"`":  true,
+	"``": true,
+}
+
 // Detokenize joins tokens back into a sentence, attaching punctuation.
 func Detokenize(tokens []string) string {
 	if len(tokens) == 0 {
@@ -78,18 +125,26 @@ func Detokenize(tokens []string) string {
 	}
 
 	var result []string
-	for i, token := range tokens {
-		if i > 0 && isPunctuation(token) {
+	prefix := false
+	for _, token := range tokens {
+		switch {
+		case prefix:
 			result[len(result)-1] += token
-		} else {
+		case prefixTokens[token] || len(result) == 0 || !isPunctuation(token):
 			result = append(result, token)
+		default:
+			result[len(result)-1] += token
 		}
+		prefix = prefixTokens[token]
 	}
 
 	return strings.Join(result, " ")
 }
 
 func isPunctuation(token string) bool {
+	if token == "." {
+		return true
+	}
 	if emoticonRegex.MatchString(token) {
 		return false
 	}
