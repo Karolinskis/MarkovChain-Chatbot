@@ -29,7 +29,22 @@ jobs:
         run: go build ./...
 
       - name: Test
-        run: go test ./...
+        run: go test -coverprofile=cover.out ./...
+
+      - name: Convert coverage to Cobertura
+        run: go run github.com/boumenot/gocover-cobertura@latest < cover.out > coverage.xml
+
+      - name: Render coverage report
+        uses: irongut/CodeCoverageSummary@v1.3.0
+        with:
+          filename: coverage.xml
+          format: markdown
+          badge: true
+          hide_branch_rate: true
+          output: file
+
+      - name: Publish coverage summary
+        run: cat code-coverage-results.md >> "$GITHUB_STEP_SUMMARY"
 
   docker:
     needs: test
