@@ -10,10 +10,10 @@ import (
 	_ "github.com/jackc/pgx/v5/stdlib"
 	"github.com/pressly/goose/v3"
 
-	"markovchain-chatbot/settings"
+	"markovchain-chatbot/internal/settings"
 )
 
-const migrationsDir = "database/migrations"
+const migrationsDir = "internal/database/migrations"
 
 func main() {
 	settingsPath := flag.String("settings", "settings.json", "path to settings file")

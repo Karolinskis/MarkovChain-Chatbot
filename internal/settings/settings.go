@@ -26,14 +26,13 @@ type ChannelConfig struct {
 	TrainingMode          bool     `json:"TrainingMode"`
 	AllowedUsers          []string `json:"AllowedUsers"`
 	BlockedUsers          []string `json:"BlockedUsers"`
-	MinSentenceWords      int      `json:"MinSentenceWords"`
 	MaxSentenceWords      int      `json:"MaxSentenceWords"`
 	AutoGenerateMessages  bool     `json:"AutoGenerateMessages"`
 	AutoGenerateInterval  int      `json:"AutoGenerateInterval"`
 	AllowGenerateCommand  bool     `json:"AllowGenerateCommand"`
 	GenerateCommands      []string `json:"GenerateCommands"`
 	BlacklistedWords      []string `json:"BlacklistedWords"`
-	AllowNonAsciiMessages bool     `json:"AllowNonAsciiMessages"`
+	AllowNonASCIIMessages bool     `json:"AllowNonAsciiMessages"`
 }
 
 // Load reads settings from the given path. If the file doesn't exist,
@@ -74,14 +73,13 @@ func writeDefaults(path string) error {
 						TrainingMode:          false,
 						AllowedUsers:          []string{"allowedUser1", "allowedUser2"},
 						BlockedUsers:          []string{"blockedUser1", "blockedUser2"},
-						MinSentenceWords:      -1,
 						MaxSentenceWords:      20,
 						AutoGenerateMessages:  true,
 						AutoGenerateInterval:  5000,
 						AllowGenerateCommand:  true,
 						GenerateCommands:      []string{"!generate"},
 						BlacklistedWords:      []string{},
-						AllowNonAsciiMessages: false,
+						AllowNonASCIIMessages: false,
 					},
 				},
 			},

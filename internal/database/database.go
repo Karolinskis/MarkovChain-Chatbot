@@ -2,6 +2,7 @@ package database
 
 import (
 	"context"
+	"errors"
 	"fmt"
 
 	"github.com/jackc/pgx/v5"
@@ -10,6 +11,12 @@ import (
 
 type Database struct {
 	pool *pgxpool.Pool
+}
+
+// Statistics holds per-channel counts of the trained Markov dataset.
+type Statistics struct {
+	StartPairs     int
+	GrammarEntries int
 }
 
 func New(ctx context.Context, connStr string) (*Database, error) {
@@ -101,9 +108,9 @@ func (d *Database) AddGrammar(ctx context.Context, channelID int, word1, word2 s
 
 // GetNextWord returns the next word after word1+word2. Returns "" when the
 // chain terminates (NULL word3) or no transition exists — both mean stop.
-func (d *Database) GetNextWord(ctx context.Context, channelID int, word1, word2 string) string {
+func (d *Database) GetNextWord(ctx context.Context, channelID int, word1, word2 string) (string, error) {
 	if word1 == "" || word2 == "" {
-		return ""
+		return "", nil
 	}
 
 	var word3 *string
@@ -113,13 +120,20 @@ func (d *Database) GetNextWord(ctx context.Context, channelID int, word1, word2 
 		ORDER BY RANDOM()
 		LIMIT 1
 	`, channelID, word1, word2).Scan(&word3)
-	if err != nil || word3 == nil {
-		return ""
+	switch {
+	case errors.Is(err, pgx.ErrNoRows):
+		return "", nil
+	case err != nil:
+		return "", fmt.Errorf("get next word: %w", err)
+	case word3 == nil:
+		return "", nil
 	}
-	return *word3
+	return *word3, nil
 }
 
-func (d *Database) GetStartWord(ctx context.Context, channelID int) string {
+// GetStartWord returns a random "word1 word2" start pair, or "" when the
+// channel has no training data yet.
+func (d *Database) GetStartWord(ctx context.Context, channelID int) (string, error) {
 	var word1, word2 string
 	err := d.pool.QueryRow(ctx, `
 		SELECT word1, word2 FROM markov_starts
@@ -127,29 +141,31 @@ func (d *Database) GetStartWord(ctx context.Context, channelID int) string {
 		ORDER BY RANDOM()
 		LIMIT 1
 	`, channelID).Scan(&word1, &word2)
-	if err != nil {
-		return ""
+	switch {
+	case errors.Is(err, pgx.ErrNoRows):
+		return "", nil
+	case err != nil:
+		return "", fmt.Errorf("get start word: %w", err)
 	}
-	return word1 + " " + word2
+	return word1 + " " + word2, nil
 }
 
-func (d *Database) GetStatistics(ctx context.Context, channelID int) map[string]int {
-	stats := make(map[string]int)
+func (d *Database) GetStatistics(ctx context.Context, channelID int) (Statistics, error) {
+	var stats Statistics
 
-	var count int
 	if err := d.pool.QueryRow(ctx,
 		`SELECT COUNT(*) FROM markov_starts WHERE channel_id = $1`, channelID,
-	).Scan(&count); err == nil {
-		stats["TotalStartPairs"] = count
+	).Scan(&stats.StartPairs); err != nil {
+		return Statistics{}, fmt.Errorf("count start pairs: %w", err)
 	}
 
 	if err := d.pool.QueryRow(ctx,
 		`SELECT COUNT(*) FROM markov_grammar WHERE channel_id = $1`, channelID,
-	).Scan(&count); err == nil {
-		stats["TotalGrammarEntries"] = count
+	).Scan(&stats.GrammarEntries); err != nil {
+		return Statistics{}, fmt.Errorf("count grammar entries: %w", err)
 	}
 
-	return stats
+	return stats, nil
 }
 
 // DeleteMessageChain removes the message and all its Twitch replies, undoing

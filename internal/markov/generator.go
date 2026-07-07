@@ -5,12 +5,20 @@ import (
 	"log/slog"
 	"strings"
 
-	"markovchain-chatbot/database"
-	"markovchain-chatbot/filter"
-	"markovchain-chatbot/tokenizer"
+	"markovchain-chatbot/internal/database"
+	"markovchain-chatbot/internal/filter"
+	"markovchain-chatbot/internal/tokenizer"
 )
 
 const maxGenerationAttempts = 10
+
+// Config holds the per-channel generation settings for a Generator.
+type Config struct {
+	ChannelID        int
+	BlacklistedWords []string
+	MaxSentenceWords int
+	AllowNonASCII    bool
+}
 
 type Generator struct {
 	db                         *database.Database
@@ -20,18 +28,18 @@ type Generator struct {
 	allowNonASCII              bool
 }
 
-func NewGenerator(db *database.Database, channelID int, blacklistedWords []string, maxSentenceWords int, allowNonASCII bool) *Generator {
-	normalized := make([]string, 0, len(blacklistedWords))
-	for _, w := range blacklistedWords {
+func New(db *database.Database, cfg Config) *Generator {
+	normalized := make([]string, 0, len(cfg.BlacklistedWords))
+	for _, w := range cfg.BlacklistedWords {
 		normalized = append(normalized, filter.Normalize(w))
 	}
 
 	return &Generator{
 		db:                         db,
-		channelID:                  channelID,
+		channelID:                  cfg.ChannelID,
 		normalizedBlacklistedWords: normalized,
-		maxSentenceWords:           maxSentenceWords,
-		allowNonASCII:              allowNonASCII,
+		maxSentenceWords:           cfg.MaxSentenceWords,
+		allowNonASCII:              cfg.AllowNonASCII,
 	}
 }
 
@@ -54,36 +62,45 @@ func (g *Generator) TrainMessage(ctx context.Context, tokens []string) error {
 	return g.db.AddGrammar(ctx, g.channelID, tokens[len(tokens)-2], tokens[len(tokens)-1], nil)
 }
 
-func (g *Generator) GenerateMessage(ctx context.Context) string {
+// GenerateMessage builds a random sentence from the trained dataset. It
+// returns "" without error when no clean sentence could be produced within
+// the attempt limit.
+func (g *Generator) GenerateMessage(ctx context.Context) (string, error) {
 	for i := 0; i < maxGenerationAttempts; i++ {
-		startWordPair := g.db.GetStartWord(ctx, g.channelID)
+		startWordPair, err := g.db.GetStartWord(ctx, g.channelID)
+		if err != nil {
+			return "", err
+		}
 		if startWordPair == "" {
 			continue
 		}
 
-		sentence := g.tryGenerateSentence(ctx, startWordPair)
+		sentence, err := g.tryGenerateSentence(ctx, startWordPair)
+		if err != nil {
+			return "", err
+		}
 		if len(sentence) == 0 {
 			continue
 		}
 
 		message := tokenizer.Detokenize(sentence)
 		if filter.IsCleanMessage(message, g.allowNonASCII) {
-			return message
+			return message, nil
 		}
 	}
 
 	slog.Warn("failed to generate clean sentence", "attempts", maxGenerationAttempts)
-	return ""
+	return "", nil
 }
 
-func (g *Generator) GetStatistics(ctx context.Context) map[string]int {
+func (g *Generator) GetStatistics(ctx context.Context) (database.Statistics, error) {
 	return g.db.GetStatistics(ctx, g.channelID)
 }
 
-func (g *Generator) tryGenerateSentence(ctx context.Context, startWordPair string) []string {
+func (g *Generator) tryGenerateSentence(ctx context.Context, startWordPair string) ([]string, error) {
 	words := strings.SplitN(startWordPair, " ", 2)
 	if len(words) < 2 || g.areWordsBlacklisted(words) {
-		return nil
+		return nil, nil
 	}
 
 	result := make([]string, 0, g.maxSentenceWords)
@@ -92,14 +109,17 @@ func (g *Generator) tryGenerateSentence(ctx context.Context, startWordPair strin
 	currentWord2 := words[1]
 
 	for i := 0; i < g.maxSentenceWords-2; i++ {
-		nextWord := g.db.GetNextWord(ctx, g.channelID, currentWord1, currentWord2)
+		nextWord, err := g.db.GetNextWord(ctx, g.channelID, currentWord1, currentWord2)
+		if err != nil {
+			return nil, err
+		}
 		if nextWord == "" {
 			break
 		}
 
 		if g.isWordBlacklisted(nextWord) {
 			slog.Debug("blacklisted word hit", "partial", strings.Join(result, " "), "word", nextWord)
-			return nil
+			return nil, nil
 		}
 
 		result = append(result, nextWord)
@@ -107,7 +127,7 @@ func (g *Generator) tryGenerateSentence(ctx context.Context, startWordPair strin
 		currentWord2 = nextWord
 	}
 
-	return result
+	return result, nil
 }
 
 func (g *Generator) isWordBlacklisted(word string) bool {

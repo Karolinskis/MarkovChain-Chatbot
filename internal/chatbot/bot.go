@@ -2,12 +2,14 @@ package chatbot
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"log/slog"
 	"strings"
+	"sync"
 
-	"markovchain-chatbot/database"
-	"markovchain-chatbot/settings"
+	"markovchain-chatbot/internal/database"
+	"markovchain-chatbot/internal/settings"
 
 	twitch "github.com/gempir/go-twitch-irc/v4"
 )
@@ -22,6 +24,7 @@ type Bot struct {
 	botUsername string
 }
 
+// New builds a bot and registers its message handlers. Call Run to connect.
 func New(ctx context.Context, cfg settings.BotConfig, db *database.Database, live LiveChecker) (*Bot, error) {
 	accessToken := cfg.AccessToken
 	if !strings.HasPrefix(accessToken, "oauth:") {
@@ -53,28 +56,49 @@ func New(ctx context.Context, cfg settings.BotConfig, db *database.Database, liv
 
 	client.OnPrivateMessage(func(message twitch.PrivateMessage) {
 		if ch, ok := bot.channels[message.Channel]; ok {
-			ch.onMessage(bot.botUsername, message)
+			ch.onMessage(ctx, bot.botUsername, message)
 		}
 	})
 
 	client.OnClearMessage(func(message twitch.ClearMessage) {
 		if ch, ok := bot.channels[message.Channel]; ok {
-			ch.onDelete(message)
+			ch.onDelete(ctx, message)
 		}
 	})
 
-	for name, ch := range bot.channels {
-		client.Join(name)
+	return bot, nil
+}
+
+// Run joins the configured channels, connects to Twitch IRC, and starts the
+// per-channel auto-generate loops. It blocks until ctx is cancelled or the
+// connection fails, and waits for all goroutines it started to finish.
+func (b *Bot) Run(ctx context.Context) error {
+	ctx, cancel := context.WithCancel(ctx)
+	var wg sync.WaitGroup
+	defer wg.Wait()
+	defer cancel()
+
+	for name, ch := range b.channels {
+		b.client.Join(name)
 		if !ch.cfg.TrainingMode && ch.cfg.AutoGenerateMessages {
-			go ch.startAutoGenerate(ctx)
+			wg.Go(func() {
+				ch.autoGenerate(ctx)
+			})
 		}
 	}
 
+	connectErr := make(chan error, 1)
 	go func() {
-		if err := client.Connect(); err != nil {
-			slog.Error("IRC connection error", "bot", cfg.BotUsername, "error", err)
-		}
+		connectErr <- b.client.Connect()
 	}()
 
-	return bot, nil
+	select {
+	case <-ctx.Done():
+		if err := b.client.Disconnect(); err != nil && !errors.Is(err, twitch.ErrConnectionIsNotOpen) {
+			return fmt.Errorf("disconnect %s: %w", b.botUsername, err)
+		}
+		return nil
+	case err := <-connectErr:
+		return fmt.Errorf("connect as %s: %w", b.botUsername, err)
+	}
 }

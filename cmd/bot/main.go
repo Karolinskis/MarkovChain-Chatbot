@@ -2,18 +2,20 @@ package main
 
 import (
 	"context"
+	"fmt"
 	"log/slog"
 	"os"
 	"os/signal"
 	"syscall"
 	"time"
 
-	"markovchain-chatbot/chatbot"
-	"markovchain-chatbot/database"
-	"markovchain-chatbot/helix"
-	"markovchain-chatbot/settings"
+	"markovchain-chatbot/internal/chatbot"
+	"markovchain-chatbot/internal/database"
+	"markovchain-chatbot/internal/helix"
+	"markovchain-chatbot/internal/settings"
 
 	"github.com/lmittmann/tint"
+	"golang.org/x/sync/errgroup"
 )
 
 func main() {
@@ -22,6 +24,13 @@ func main() {
 		TimeFormat: time.Kitchen,
 	})))
 
+	if err := run(); err != nil {
+		slog.Error("fatal", "error", err)
+		os.Exit(1)
+	}
+}
+
+func run() error {
 	settingsPath := "settings.json"
 	if len(os.Args) > 1 {
 		settingsPath = os.Args[1]
@@ -29,8 +38,7 @@ func main() {
 
 	cfg, err := settings.Load(settingsPath)
 	if err != nil {
-		slog.Error("failed to load settings", "error", err)
-		os.Exit(1)
+		return fmt.Errorf("load settings: %w", err)
 	}
 
 	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
@@ -38,8 +46,7 @@ func main() {
 
 	db, err := database.New(ctx, cfg.DatabaseURL)
 	if err != nil {
-		slog.Error("failed to initialize database", "error", err)
-		os.Exit(1)
+		return fmt.Errorf("initialize database: %w", err)
 	}
 	defer db.Close()
 
@@ -47,8 +54,7 @@ func main() {
 	if cfg.HelixClientID != "" && cfg.HelixClientSecret != "" {
 		helixClient, err := helix.New(cfg.HelixClientID, cfg.HelixClientSecret)
 		if err != nil {
-			slog.Error("failed to create helix client", "error", err)
-			os.Exit(1)
+			return fmt.Errorf("create helix client: %w", err)
 		}
 		live = helixClient.LiveChannels
 		slog.Info("live detection enabled")
@@ -60,16 +66,27 @@ func main() {
 	for _, botCfg := range cfg.Bots {
 		bot, err := chatbot.New(ctx, botCfg, db, live)
 		if err != nil {
-			slog.Error("failed to start bot", "bot", botCfg.BotUsername, "error", err)
-			os.Exit(1)
+			return fmt.Errorf("create bot %s: %w", botCfg.BotUsername, err)
 		}
 		bots = append(bots, bot)
 	}
 
+	g, ctx := errgroup.WithContext(ctx)
+	for _, bot := range bots {
+		g.Go(func() error {
+			return bot.Run(ctx)
+		})
+	}
 	if live != nil {
-		go chatbot.StartLivePoller(ctx, live, bots)
+		g.Go(func() error {
+			chatbot.RunLivePoller(ctx, live, bots)
+			return nil
+		})
 	}
 
-	<-ctx.Done()
-	slog.Info("shutting down")
+	if err := g.Wait(); err != nil {
+		return err
+	}
+	slog.Info("shut down")
+	return nil
 }

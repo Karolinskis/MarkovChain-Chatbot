@@ -9,10 +9,10 @@ import (
 
 const streamPollInterval = 60 * time.Second
 
-// StartLivePoller periodically checks the live status of every channel across
+// RunLivePoller periodically checks the live status of every channel across
 // the given bots with a single LiveChecker call per tick and updates each
 // channel's live flag. It blocks until ctx is cancelled.
-func StartLivePoller(ctx context.Context, live LiveChecker, bots []*Bot) {
+func RunLivePoller(ctx context.Context, live LiveChecker, bots []*Bot) {
 	type target struct {
 		login string
 		ch    *channel

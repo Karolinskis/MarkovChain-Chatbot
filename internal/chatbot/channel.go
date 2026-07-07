@@ -8,10 +8,10 @@ import (
 	"sync/atomic"
 	"time"
 
-	"markovchain-chatbot/database"
-	"markovchain-chatbot/markov"
-	"markovchain-chatbot/settings"
-	"markovchain-chatbot/tokenizer"
+	"markovchain-chatbot/internal/database"
+	"markovchain-chatbot/internal/markov"
+	"markovchain-chatbot/internal/settings"
+	"markovchain-chatbot/internal/tokenizer"
 
 	twitch "github.com/gempir/go-twitch-irc/v4"
 )
@@ -27,32 +27,43 @@ type channel struct {
 
 func newChannel(cfg settings.ChannelConfig, channelID int, client *twitch.Client, db *database.Database) *channel {
 	return &channel{
-		id:     channelID,
-		markov: markov.NewGenerator(db, channelID, cfg.BlacklistedWords, cfg.MaxSentenceWords, cfg.AllowNonAsciiMessages),
+		id: channelID,
+		markov: markov.New(db, markov.Config{
+			ChannelID:        channelID,
+			BlacklistedWords: cfg.BlacklistedWords,
+			MaxSentenceWords: cfg.MaxSentenceWords,
+			AllowNonASCII:    cfg.AllowNonASCIIMessages,
+		}),
 		cfg:    cfg,
 		client: client,
 		db:     db,
 	}
 }
 
-func (c *channel) startAutoGenerate(ctx context.Context) {
+func (c *channel) autoGenerate(ctx context.Context) {
+	ticker := time.NewTicker(time.Duration(c.cfg.AutoGenerateInterval) * time.Second)
+	defer ticker.Stop()
+
 	for {
 		select {
 		case <-ctx.Done():
 			return
-		case <-time.After(time.Duration(c.cfg.AutoGenerateInterval) * time.Second):
+		case <-ticker.C:
 			if !c.isLive.Load() {
 				slog.Debug("stream offline, skipping auto-generate", "channel", c.cfg.ChannelName)
 				continue
 			}
-			c.send(c.markov.GenerateMessage(ctx))
+			message, err := c.markov.GenerateMessage(ctx)
+			if err != nil {
+				slog.Error("failed to generate message", "channel", c.cfg.ChannelName, "error", err)
+				continue
+			}
+			c.send(message)
 		}
 	}
 }
 
-func (c *channel) onMessage(botUsername string, message twitch.PrivateMessage) {
-	ctx := context.Background()
-
+func (c *channel) onMessage(ctx context.Context, botUsername string, message twitch.PrivateMessage) {
 	c.saveNode(ctx, botUsername, message)
 
 	if strings.EqualFold(message.User.Name, botUsername) {
@@ -66,10 +77,14 @@ func (c *channel) onMessage(botUsername string, message twitch.PrivateMessage) {
 	trimmed := strings.TrimSpace(message.Message)
 
 	if strings.EqualFold(trimmed, "!stats") {
-		stats := c.markov.GetStatistics(ctx)
+		stats, err := c.markov.GetStatistics(ctx)
+		if err != nil {
+			slog.Error("failed to get statistics", "channel", c.cfg.ChannelName, "error", err)
+			return
+		}
 		c.client.Reply(c.cfg.ChannelName, message.ID, fmt.Sprintf(
 			"Dataset Statistics: Start Pairs: %d, Grammar Entries: %d",
-			stats["TotalStartPairs"], stats["TotalGrammarEntries"],
+			stats.StartPairs, stats.GrammarEntries,
 		))
 		return
 	}
@@ -77,12 +92,17 @@ func (c *channel) onMessage(botUsername string, message twitch.PrivateMessage) {
 	if c.cfg.AllowGenerateCommand {
 		for _, cmd := range c.cfg.GenerateCommands {
 			if strings.HasPrefix(strings.ToLower(trimmed), strings.ToLower(cmd)) {
-				if c.cfg.IsUserAllowed(message.User.Name) {
-					if generated := c.markov.GenerateMessage(ctx); generated != "" {
-						c.client.Reply(c.cfg.ChannelName, message.ID, generated)
-					}
-				} else {
+				if !c.cfg.IsUserAllowed(message.User.Name) {
 					slog.Info("generate command denied", "user", message.User.Name, "channel", c.cfg.ChannelName)
+					return
+				}
+				generated, err := c.markov.GenerateMessage(ctx)
+				if err != nil {
+					slog.Error("failed to generate message", "channel", c.cfg.ChannelName, "error", err)
+					return
+				}
+				if generated != "" {
+					c.client.Reply(c.cfg.ChannelName, message.ID, generated)
 				}
 				return
 			}
@@ -99,8 +119,7 @@ func (c *channel) onMessage(botUsername string, message twitch.PrivateMessage) {
 	}
 }
 
-func (c *channel) onDelete(message twitch.ClearMessage) {
-	ctx := context.Background()
+func (c *channel) onDelete(ctx context.Context, message twitch.ClearMessage) {
 	if err := c.db.DeleteMessageChain(ctx, c.id, message.TargetMsgID, tokenizer.Tokenize); err != nil {
 		slog.Error("failed to delete message chain", "channel", c.cfg.ChannelName, "messageID", message.TargetMsgID, "error", err)
 		return
