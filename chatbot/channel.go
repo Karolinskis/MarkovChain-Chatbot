@@ -17,8 +17,6 @@ import (
 	twitch "github.com/gempir/go-twitch-irc/v4"
 )
 
-const streamPollInterval = 60 * time.Second
-
 type channel struct {
 	id     int
 	markov *markov.Generator
@@ -35,37 +33,6 @@ func newChannel(cfg settings.ChannelConfig, channelID int, client *twitch.Client
 		cfg:    cfg,
 		client: client,
 		db:     db,
-	}
-}
-
-func (c *channel) startPoller(ctx context.Context, live LiveChecker) {
-	check := func() {
-		statuses, err := live([]string{c.cfg.ChannelName})
-		if err != nil {
-			slog.Warn("stream status check failed", "channel", c.cfg.ChannelName, "error", err)
-			return
-		}
-		nowLive := statuses[c.cfg.ChannelName]
-		if wasLive := c.isLive.Swap(nowLive); nowLive != wasLive {
-			if nowLive {
-				slog.Info("stream live", "channel", c.cfg.ChannelName)
-			} else {
-				slog.Info("stream offline", "channel", c.cfg.ChannelName)
-			}
-		}
-	}
-
-	check()
-
-	ticker := time.NewTicker(streamPollInterval)
-	defer ticker.Stop()
-	for {
-		select {
-		case <-ctx.Done():
-			return
-		case <-ticker.C:
-			check()
-		}
 	}
 }
 
