@@ -16,16 +16,22 @@ import (
 	twitch "github.com/gempir/go-twitch-irc/v4"
 )
 
+// ircClient is the part of the Twitch IRC client a channel sends through.
+type ircClient interface {
+	Say(channel, text string)
+	Reply(channel, messageID, text string)
+}
+
 type channel struct {
 	id     int
 	markov *markov.Generator
 	cfg    settings.ChannelConfig
 	isLive atomic.Bool
-	client *twitch.Client
+	client ircClient
 	db     *database.Database
 }
 
-func newChannel(cfg settings.ChannelConfig, channelID int, client *twitch.Client, db *database.Database) *channel {
+func newChannel(cfg settings.ChannelConfig, channelID int, client ircClient, db *database.Database) *channel {
 	return &channel{
 		id: channelID,
 		markov: markov.New(db, markov.Config{

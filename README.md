@@ -24,13 +24,10 @@ A Twitch chatbot that learns from chat in realtime and generates messages using 
 ## Build & Run
 
 ```bash
-# 1. Create a settings file (running once generates a template)
-go run ./cmd/bot
-
-# 2. Fill in settings.json, then apply database migrations
+# 1. Apply database migrations
 go run ./cmd/migrate -settings settings.json up
 
-# 3. Run the bot
+# 2. Run the bot
 go build -o markovchain-chatbot ./cmd/bot
 ./markovchain-chatbot settings.json
 ```

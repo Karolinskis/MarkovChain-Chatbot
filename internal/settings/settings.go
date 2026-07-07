@@ -2,7 +2,6 @@ package settings
 
 import (
 	"encoding/json"
-	"errors"
 	"fmt"
 	"os"
 	"strings"
@@ -35,16 +34,8 @@ type ChannelConfig struct {
 	AllowNonASCIIMessages bool     `json:"AllowNonAsciiMessages"`
 }
 
-// Load reads settings from the given path. If the file doesn't exist,
-// it generates a default config and returns an error.
+// Load reads settings from the given path.
 func Load(path string) (*Settings, error) {
-	if _, err := os.Stat(path); errors.Is(err, os.ErrNotExist) {
-		if err := writeDefaults(path); err != nil {
-			return nil, fmt.Errorf("generating default settings: %w", err)
-		}
-		return nil, fmt.Errorf("settings file not found, generated defaults at %s", path)
-	}
-
 	data, err := os.ReadFile(path)
 	if err != nil {
 		return nil, fmt.Errorf("reading settings file: %w", err)
@@ -56,41 +47,6 @@ func Load(path string) (*Settings, error) {
 	}
 
 	return &cfg, nil
-}
-
-func writeDefaults(path string) error {
-	cfg := Settings{
-		DatabaseURL:       "postgres://user:password@localhost:5432/markovbot",
-		HelixClientID:     "your_twitch_app_client_id",
-		HelixClientSecret: "your_twitch_app_client_secret",
-		Bots: []BotConfig{
-			{
-				BotUsername: "botUsername",
-				AccessToken: "accessToken",
-				Channels: []ChannelConfig{
-					{
-						ChannelName:           "channelName",
-						TrainingMode:          false,
-						AllowedUsers:          []string{"allowedUser1", "allowedUser2"},
-						BlockedUsers:          []string{"blockedUser1", "blockedUser2"},
-						MaxSentenceWords:      20,
-						AutoGenerateMessages:  true,
-						AutoGenerateInterval:  5000,
-						AllowGenerateCommand:  true,
-						GenerateCommands:      []string{"!generate"},
-						BlacklistedWords:      []string{},
-						AllowNonASCIIMessages: false,
-					},
-				},
-			},
-		},
-	}
-
-	data, err := json.MarshalIndent(&cfg, "", "  ")
-	if err != nil {
-		return err
-	}
-	return os.WriteFile(path, data, 0644)
 }
 
 func (c *ChannelConfig) IsUserBlocked(username string) bool {
