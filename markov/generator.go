@@ -17,9 +17,10 @@ type Generator struct {
 	channelID                  int
 	normalizedBlacklistedWords []string
 	maxSentenceWords           int
+	allowNonASCII              bool
 }
 
-func NewGenerator(db *database.Database, channelID int, blacklistedWords []string, maxSentenceWords int) *Generator {
+func NewGenerator(db *database.Database, channelID int, blacklistedWords []string, maxSentenceWords int, allowNonASCII bool) *Generator {
 	normalized := make([]string, 0, len(blacklistedWords))
 	for _, w := range blacklistedWords {
 		normalized = append(normalized, filter.Normalize(w))
@@ -30,6 +31,7 @@ func NewGenerator(db *database.Database, channelID int, blacklistedWords []strin
 		channelID:                  channelID,
 		normalizedBlacklistedWords: normalized,
 		maxSentenceWords:           maxSentenceWords,
+		allowNonASCII:              allowNonASCII,
 	}
 }
 
@@ -60,8 +62,13 @@ func (g *Generator) GenerateMessage(ctx context.Context) string {
 		}
 
 		sentence := g.tryGenerateSentence(ctx, startWordPair)
-		if len(sentence) > 0 {
-			return tokenizer.Detokenize(sentence)
+		if len(sentence) == 0 {
+			continue
+		}
+
+		message := tokenizer.Detokenize(sentence)
+		if filter.IsCleanMessage(message, g.allowNonASCII) {
+			return message
 		}
 	}
 

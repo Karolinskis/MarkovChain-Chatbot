@@ -9,7 +9,6 @@ import (
 	"time"
 
 	"markovchain-chatbot/database"
-	"markovchain-chatbot/filter"
 	"markovchain-chatbot/markov"
 	"markovchain-chatbot/settings"
 	"markovchain-chatbot/tokenizer"
@@ -29,7 +28,7 @@ type channel struct {
 func newChannel(cfg settings.ChannelConfig, channelID int, client *twitch.Client, db *database.Database) *channel {
 	return &channel{
 		id:     channelID,
-		markov: markov.NewGenerator(db, channelID, cfg.BlacklistedWords, cfg.MaxSentenceWords),
+		markov: markov.NewGenerator(db, channelID, cfg.BlacklistedWords, cfg.MaxSentenceWords, cfg.AllowNonAsciiMessages),
 		cfg:    cfg,
 		client: client,
 		db:     db,
@@ -46,10 +45,7 @@ func (c *channel) startAutoGenerate(ctx context.Context) {
 				slog.Debug("stream offline, skipping auto-generate", "channel", c.cfg.ChannelName)
 				continue
 			}
-			message := c.markov.GenerateMessage(ctx)
-			if filter.IsCleanMessage(message, c.cfg.AllowNonAsciiMessages) {
-				c.send(message)
-			}
+			c.send(c.markov.GenerateMessage(ctx))
 		}
 	}
 }
