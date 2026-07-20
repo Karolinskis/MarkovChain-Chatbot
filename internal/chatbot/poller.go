@@ -5,6 +5,8 @@ import (
 	"log/slog"
 	"strings"
 	"time"
+
+	"markovchain-chatbot/internal/metrics"
 )
 
 const streamPollInterval = 60 * time.Second
@@ -38,10 +40,16 @@ func RunLivePoller(ctx context.Context, live LiveChecker, bots []*Bot) {
 		statuses, err := live(logins)
 		if err != nil {
 			slog.Warn("stream status check failed", "error", err)
+			metrics.LiveCheckErrors.Inc()
 			return
 		}
 		for _, t := range targets {
 			nowLive := statuses[t.login]
+			var liveValue float64
+			if nowLive {
+				liveValue = 1
+			}
+			metrics.StreamLive.WithLabelValues(t.ch.cfg.ChannelName).Set(liveValue)
 			if wasLive := t.ch.isLive.Swap(nowLive); nowLive != wasLive {
 				if nowLive {
 					slog.Info("stream live", "channel", t.login)

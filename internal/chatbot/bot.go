@@ -9,6 +9,7 @@ import (
 	"sync"
 
 	"markovchain-chatbot/internal/database"
+	"markovchain-chatbot/internal/metrics"
 	"markovchain-chatbot/internal/settings"
 
 	twitch "github.com/gempir/go-twitch-irc/v4"
@@ -52,6 +53,7 @@ func New(ctx context.Context, cfg settings.BotConfig, db *database.Database, liv
 
 	client.OnConnect(func() {
 		slog.Info("connected to Twitch IRC", "bot", cfg.BotUsername)
+		metrics.IRCUp.WithLabelValues(bot.botUsername).Set(1)
 	})
 
 	client.OnPrivateMessage(func(message twitch.PrivateMessage) {
@@ -77,6 +79,7 @@ func (b *Bot) Run(ctx context.Context) error {
 	var wg sync.WaitGroup
 	defer wg.Wait()
 	defer cancel()
+	defer metrics.IRCUp.WithLabelValues(b.botUsername).Set(0)
 
 	for name, ch := range b.channels {
 		b.client.Join(name)

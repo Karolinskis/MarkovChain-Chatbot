@@ -12,6 +12,7 @@ import (
 	"markovchain-chatbot/internal/chatbot"
 	"markovchain-chatbot/internal/database"
 	"markovchain-chatbot/internal/helix"
+	"markovchain-chatbot/internal/metrics"
 	"markovchain-chatbot/internal/settings"
 
 	"github.com/lmittmann/tint"
@@ -43,6 +44,12 @@ func run() error {
 
 	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
 	defer stop()
+
+	metricsAddr := os.Getenv("METRICS_ADDR")
+	if metricsAddr == "" {
+		metricsAddr = ":9091"
+	}
+	metrics.Serve(metricsAddr)
 
 	db, err := database.New(ctx, cfg.DatabaseURL)
 	if err != nil {

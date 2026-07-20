@@ -10,6 +10,7 @@ import (
 
 	"markovchain-chatbot/internal/database"
 	"markovchain-chatbot/internal/markov"
+	"markovchain-chatbot/internal/metrics"
 	"markovchain-chatbot/internal/settings"
 	"markovchain-chatbot/internal/tokenizer"
 
@@ -62,8 +63,14 @@ func (c *channel) autoGenerate(ctx context.Context) {
 			message, err := c.markov.GenerateMessage(ctx)
 			if err != nil {
 				slog.Error("failed to generate message", "channel", c.cfg.ChannelName, "error", err)
+				metrics.GenerationErrors.WithLabelValues(c.cfg.ChannelName, "auto").Inc()
 				continue
 			}
+			if message == "" {
+				metrics.GenerationEmpty.WithLabelValues(c.cfg.ChannelName, "auto").Inc()
+				continue
+			}
+			metrics.MessagesGenerated.WithLabelValues(c.cfg.ChannelName, "auto").Inc()
 			c.send(message)
 		}
 	}
@@ -105,11 +112,15 @@ func (c *channel) onMessage(ctx context.Context, botUsername string, message twi
 				generated, err := c.markov.GenerateMessage(ctx)
 				if err != nil {
 					slog.Error("failed to generate message", "channel", c.cfg.ChannelName, "error", err)
+					metrics.GenerationErrors.WithLabelValues(c.cfg.ChannelName, "command").Inc()
 					return
 				}
-				if generated != "" {
-					c.client.Reply(c.cfg.ChannelName, message.ID, generated)
+				if generated == "" {
+					metrics.GenerationEmpty.WithLabelValues(c.cfg.ChannelName, "command").Inc()
+					return
 				}
+				metrics.MessagesGenerated.WithLabelValues(c.cfg.ChannelName, "command").Inc()
+				c.client.Reply(c.cfg.ChannelName, message.ID, generated)
 				return
 			}
 		}
@@ -122,14 +133,19 @@ func (c *channel) onMessage(ctx context.Context, botUsername string, message twi
 	tokens := tokenizer.Tokenize(message.Message)
 	if err := c.markov.TrainMessage(ctx, tokens); err != nil {
 		slog.Error("failed to train", "channel", c.cfg.ChannelName, "error", err)
+		metrics.TrainErrors.WithLabelValues(c.cfg.ChannelName).Inc()
+		return
 	}
+	metrics.MessagesTrained.WithLabelValues(c.cfg.ChannelName).Inc()
 }
 
 func (c *channel) onDelete(ctx context.Context, message twitch.ClearMessage) {
 	if err := c.db.DeleteMessageChain(ctx, c.id, message.TargetMsgID, tokenizer.Tokenize); err != nil {
 		slog.Error("failed to delete message chain", "channel", c.cfg.ChannelName, "messageID", message.TargetMsgID, "error", err)
+		metrics.UntrainErrors.WithLabelValues(c.cfg.ChannelName).Inc()
 		return
 	}
+	metrics.MessagesUntrained.WithLabelValues(c.cfg.ChannelName).Inc()
 	slog.Debug("deleted message chain", "channel", c.cfg.ChannelName, "rootMessageID", message.TargetMsgID)
 }
 

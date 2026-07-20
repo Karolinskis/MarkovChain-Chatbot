@@ -98,6 +98,10 @@ The settings file path defaults to `settings.json` if not provided.
 | `BlacklistedWords` | Words that must never appear in generated messages |
 | `AllowNonAsciiMessages` | Allow non-ASCII characters in generated messages |
 
+## Metrics
+
+The bot serves Prometheus metrics on `/metrics` (default `:9091`, override with the `METRICS_ADDR` env var): training/generation/untrain counts and errors per channel, live status per channel, and IRC connection state per bot account.
+
 ## Chat Commands
 
 | Command | Description |
