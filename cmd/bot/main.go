@@ -7,7 +7,6 @@ import (
 	"os"
 	"os/signal"
 	"syscall"
-	"time"
 
 	"markovchain-chatbot/internal/chatbot"
 	"markovchain-chatbot/internal/database"
@@ -15,14 +14,14 @@ import (
 	"markovchain-chatbot/internal/metrics"
 	"markovchain-chatbot/internal/settings"
 
-	"github.com/lmittmann/tint"
 	"golang.org/x/sync/errgroup"
 )
 
 func main() {
-	slog.SetDefault(slog.New(tint.NewHandler(os.Stderr, &tint.Options{
-		Level:      slog.LevelDebug,
-		TimeFormat: time.Kitchen,
+	var level slog.Level
+	level.UnmarshalText([]byte(os.Getenv("LOG_LEVEL")))
+	slog.SetDefault(slog.New(slog.NewJSONHandler(os.Stderr, &slog.HandlerOptions{
+		Level: level,
 	})))
 
 	if err := run(); err != nil {

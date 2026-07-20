@@ -5,7 +5,6 @@ go 1.26
 require (
 	github.com/gempir/go-twitch-irc/v4 v4.2.0
 	github.com/jackc/pgx/v5 v5.10.0
-	github.com/lmittmann/tint v1.1.3
 	github.com/nicklaw5/helix/v2 v2.34.0
 	github.com/pressly/goose/v3 v3.27.2
 	github.com/prometheus/client_golang v1.23.2
