@@ -117,7 +117,7 @@ func (d *Database) GetNextWord(ctx context.Context, channelID int, word1, word2 
 	err := d.pool.QueryRow(ctx, `
 		SELECT word3 FROM markov_grammar
 		WHERE channel_id = $1 AND word1 = $2 AND word2 = $3
-		ORDER BY RANDOM()
+		ORDER BY RANDOM() ^ (1.0 / count) DESC
 		LIMIT 1
 	`, channelID, word1, word2).Scan(&word3)
 	switch {
@@ -138,7 +138,7 @@ func (d *Database) GetStartWord(ctx context.Context, channelID int) (string, err
 	err := d.pool.QueryRow(ctx, `
 		SELECT word1, word2 FROM markov_starts
 		WHERE channel_id = $1
-		ORDER BY RANDOM()
+		ORDER BY RANDOM() ^ (1.0 / count) DESC
 		LIMIT 1
 	`, channelID).Scan(&word1, &word2)
 	switch {
