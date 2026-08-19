@@ -33,9 +33,15 @@ var punctuation = []punctuationRule{
 	{regexp.MustCompile(`[*]`), " $0 "},
 }
 
-// Tokenize splits a sentence into tokens, preserving emoticons.
+// Tokenize splits a sentence into tokens
 func Tokenize(sentence string) []string {
 	var output []string
+
+	// A leading "!word" is kept as one token so [Detokenize] leaves it as one token
+	if cmd, rest, ok := cutLeadingCommand(sentence); ok {
+		output = append(output, cmd)
+		sentence = rest
+	}
 
 	for {
 		loc := findEmoticon(sentence)
@@ -53,6 +59,23 @@ func Tokenize(sentence string) []string {
 
 	output = append(output, tokenizePart(sentence)...)
 	return output
+}
+
+func cutLeadingCommand(sentence string) (cmd, rest string, ok bool) {
+	if len(sentence) < 2 || sentence[0] != '!' {
+		return "", sentence, false
+	}
+	r, _ := utf8.DecodeRuneInString(sentence[1:])
+	if unicode.IsSpace(r) {
+		return "", sentence, false
+	}
+
+	body := sentence[1:]
+	idx := strings.IndexFunc(body, unicode.IsSpace)
+	if idx == -1 {
+		return sentence, "", true
+	}
+	return sentence[:1+idx], sentence[1+idx:], true
 }
 
 // findEmoticon returns the position of the first emoticon bounded by

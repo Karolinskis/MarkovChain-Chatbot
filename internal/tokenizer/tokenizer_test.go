@@ -27,6 +27,8 @@ var cases = []struct {
 	{name: "number with comma kept whole", sentence: "5,000 dollars", tokens: []string{"5,000", "dollars"}},
 	{name: "colon split before non-digit", sentence: "time: 5pm", tokens: []string{"time", ":", "5pm"}},
 	{name: "leading quote reattached", sentence: `"quoted text`, tokens: []string{`"`, "quoted", "text"}},
+	{name: "command", sentence: "!test", tokens: []string{"!test"}},
+	{name: "command with args", sentence: "!fish extra words", tokens: []string{"!fish", "extra", "words"}},
 	{name: "leading punctuation stays separate", sentence: "! hello", tokens: []string{"!", "hello"}},
 	{name: "trailing hash stays separate", sentence: "such #", tokens: []string{"such", "#"}},
 }
