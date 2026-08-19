@@ -64,7 +64,7 @@ func (d *Database) EnsureChannel(ctx context.Context, botUsername, channelName s
 	return channelID, nil
 }
 
-func (d *Database) SaveMessageChainNode(ctx context.Context, channelID int, messageID, parentMessageID, messageText string, isBotMessage bool) error {
+func (d *Database) SaveMessageChainNode(ctx context.Context, channelID int, messageID, parentMessageID, messageText, senderUsername string, isBotMessage bool) error {
 	if messageID == "" {
 		return nil
 	}
@@ -75,13 +75,14 @@ func (d *Database) SaveMessageChainNode(ctx context.Context, channelID int, mess
 	}
 
 	_, err := d.pool.Exec(ctx, `
-		INSERT INTO message_chain (channel_id, message_id, parent_message_id, message_text, is_bot_message)
-		VALUES ($1, $2, $3, $4, $5)
+		INSERT INTO message_chain (channel_id, message_id, parent_message_id, message_text, sender_username, is_bot_message)
+		VALUES ($1, $2, $3, $4, $5, $6)
 		ON CONFLICT (channel_id, message_id) DO UPDATE SET
 			parent_message_id = EXCLUDED.parent_message_id,
 			message_text      = EXCLUDED.message_text,
+			sender_username   = EXCLUDED.sender_username,
 			is_bot_message    = EXCLUDED.is_bot_message
-	`, channelID, messageID, parent, messageText, isBotMessage)
+	`, channelID, messageID, parent, messageText, senderUsername, isBotMessage)
 	return err
 }
 

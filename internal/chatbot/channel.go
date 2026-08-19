@@ -163,7 +163,7 @@ func (c *channel) saveNode(ctx context.Context, botUsername string, message twit
 		parentID = message.Reply.ParentMsgID
 	}
 	isBotMessage := strings.EqualFold(message.User.Name, botUsername)
-	if err := c.db.SaveMessageChainNode(ctx, c.id, message.ID, parentID, message.Message, isBotMessage); err != nil {
+	if err := c.db.SaveMessageChainNode(ctx, c.id, message.ID, parentID, message.Message, message.User.Name, isBotMessage); err != nil {
 		slog.Error("failed to save message chain node", "channel", c.cfg.ChannelName, "messageID", message.ID, "error", err)
 	}
 }
