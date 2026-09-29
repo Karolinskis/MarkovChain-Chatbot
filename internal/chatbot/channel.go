@@ -115,26 +115,32 @@ func (c *channel) onMessage(ctx context.Context, botUsername string, message twi
 	}
 
 	if c.cfg.AllowGenerateCommand {
-		for _, cmd := range c.cfg.GenerateCommands {
-			if strings.HasPrefix(strings.ToLower(trimmed), strings.ToLower(cmd)) {
-				if !c.cfg.IsUserAllowed(message.User.Name) {
-					slog.Info("generate command denied", "user", message.User.Name, "channel", c.cfg.ChannelName)
-					return
-				}
-				generated, err := c.markov.GenerateMessage(ctx)
-				if err != nil {
-					slog.Error("failed to generate message", "channel", c.cfg.ChannelName, "error", err)
-					metrics.GenerationErrors.WithLabelValues(c.cfg.ChannelName, "command").Inc()
-					return
-				}
-				if generated == "" {
-					metrics.GenerationEmpty.WithLabelValues(c.cfg.ChannelName, "command").Inc()
-					return
-				}
-				metrics.MessagesGenerated.WithLabelValues(c.cfg.ChannelName, "command").Inc()
-				c.client.Reply(c.cfg.ChannelName, message.ID, generated)
+		if args, ok := matchCommand(trimmed, c.cfg.GenerateCommands); ok {
+			if !c.cfg.IsUserAllowed(message.User.Name) {
+				slog.Info("generate command denied", "user", message.User.Name, "channel", c.cfg.ChannelName)
 				return
 			}
+			// "!command some question" is answered by the LLM when enabled.
+			if args != "" && c.llm != nil && c.cfg.LLMReplies {
+				if c.allowLLMReply(message.User.Name, time.Now()) {
+					message.Message = args
+					go c.replyWithLLM(ctx, botUsername, message)
+				}
+				return
+			}
+			generated, err := c.markov.GenerateMessage(ctx)
+			if err != nil {
+				slog.Error("failed to generate message", "channel", c.cfg.ChannelName, "error", err)
+				metrics.GenerationErrors.WithLabelValues(c.cfg.ChannelName, "command").Inc()
+				return
+			}
+			if generated == "" {
+				metrics.GenerationEmpty.WithLabelValues(c.cfg.ChannelName, "command").Inc()
+				return
+			}
+			metrics.MessagesGenerated.WithLabelValues(c.cfg.ChannelName, "command").Inc()
+			c.client.Reply(c.cfg.ChannelName, message.ID, generated)
+			return
 		}
 	}
 
@@ -182,4 +188,19 @@ func (c *channel) saveNode(ctx context.Context, botUsername string, message twit
 	if err := c.db.SaveMessageChainNode(ctx, c.id, message.ID, parentID, message.Message, message.User.Name, isBotMessage); err != nil {
 		slog.Error("failed to save message chain node", "channel", c.cfg.ChannelName, "messageID", message.ID, "error", err)
 	}
+}
+
+// matchCommand reports whether text starts with one of commands as a whole
+// word, and returns the text after it.
+func matchCommand(text string, commands []string) (args string, ok bool) {
+	fields := strings.Fields(text)
+	if len(fields) == 0 {
+		return "", false
+	}
+	for _, cmd := range commands {
+		if strings.EqualFold(fields[0], cmd) {
+			return strings.TrimSpace(strings.TrimSpace(text)[len(fields[0]):]), true
+		}
+	}
+	return "", false
 }
