@@ -32,12 +32,11 @@ func New(url, model string) *Client {
 }
 
 type chatRequest struct {
-	Model     string         `json:"model"`
-	Messages  []Message      `json:"messages"`
-	Stream    bool           `json:"stream"`
-	Think     bool           `json:"think"`
-	KeepAlive int            `json:"keep_alive"`
-	Options   map[string]any `json:"options"`
+	Model    string         `json:"model"`
+	Messages []Message      `json:"messages"`
+	Stream   bool           `json:"stream"`
+	Think    bool           `json:"think"`
+	Options  map[string]any `json:"options"`
 }
 
 type chatResponse struct {
@@ -49,10 +48,9 @@ type chatResponse struct {
 // disabled so small reasoning models answer in one short pass.
 func (c *Client) Chat(ctx context.Context, messages []Message) (string, error) {
 	body, err := json.Marshal(chatRequest{
-		Model:     c.model,
-		Messages:  messages,
-		KeepAlive: -1,
-		Options:   map[string]any{"num_predict": maxReplyTokens},
+		Model:    c.model,
+		Messages: messages,
+		Options:  map[string]any{"num_predict": maxReplyTokens},
 	})
 	if err != nil {
 		return "", err
