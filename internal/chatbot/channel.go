@@ -5,10 +5,12 @@ import (
 	"fmt"
 	"log/slog"
 	"strings"
+	"sync"
 	"sync/atomic"
 	"time"
 
 	"markovchain-chatbot/internal/database"
+	"markovchain-chatbot/internal/llm"
 	"markovchain-chatbot/internal/markov"
 	"markovchain-chatbot/internal/metrics"
 	"markovchain-chatbot/internal/settings"
@@ -30,10 +32,15 @@ type channel struct {
 	isLive atomic.Bool
 	client ircClient
 	db     *database.Database
+
+	llm          chatter
+	llmBusy      atomic.Bool
+	llmMu        sync.Mutex
+	llmLastReply map[string]time.Time
 }
 
-func newChannel(cfg settings.ChannelConfig, channelID int, client ircClient, db *database.Database) *channel {
-	return &channel{
+func newChannel(cfg settings.ChannelConfig, channelID int, client ircClient, db *database.Database, llmClient *llm.Client) *channel {
+	ch := &channel{
 		id: channelID,
 		markov: markov.New(db, markov.Config{
 			ChannelID:        channelID,
@@ -41,10 +48,15 @@ func newChannel(cfg settings.ChannelConfig, channelID int, client ircClient, db 
 			MaxSentenceWords: cfg.MaxSentenceWords,
 			AllowNonASCII:    cfg.AllowNonASCIIMessages,
 		}),
-		cfg:    cfg,
-		client: client,
-		db:     db,
+		cfg:          cfg,
+		client:       client,
+		db:           db,
+		llmLastReply: make(map[string]time.Time),
 	}
+	if llmClient != nil {
+		ch.llm = llmClient
+	}
+	return ch
 }
 
 func (c *channel) autoGenerate(ctx context.Context) {
@@ -124,6 +136,10 @@ func (c *channel) onMessage(ctx context.Context, botUsername string, message twi
 				return
 			}
 		}
+	}
+
+	if c.llm != nil && c.cfg.LLMReplies && addressesBot(message, botUsername) && c.allowLLMReply(message.User.Name, time.Now()) {
+		go c.replyWithLLM(ctx, botUsername, message)
 	}
 
 	if !c.isLive.Load() {

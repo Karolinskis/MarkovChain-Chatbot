@@ -130,6 +130,11 @@ func (g *Generator) tryGenerateSentence(ctx context.Context, startWordPair strin
 	return result, nil
 }
 
+// ContainsBlacklistedWord reports whether any token of message is blacklisted.
+func (g *Generator) ContainsBlacklistedWord(message string) bool {
+	return g.areWordsBlacklisted(tokenizer.Tokenize(message))
+}
+
 func (g *Generator) isWordBlacklisted(word string) bool {
 	if len(g.normalizedBlacklistedWords) == 0 {
 		return false

@@ -11,6 +11,7 @@ import (
 	"markovchain-chatbot/internal/chatbot"
 	"markovchain-chatbot/internal/database"
 	"markovchain-chatbot/internal/helix"
+	"markovchain-chatbot/internal/llm"
 	"markovchain-chatbot/internal/metrics"
 	"markovchain-chatbot/internal/settings"
 
@@ -68,9 +69,15 @@ func run() error {
 		slog.Warn("helix credentials not set, all channels treated as always live")
 	}
 
+	var llmClient *llm.Client
+	if cfg.LLMURL != "" && cfg.LLMModel != "" {
+		llmClient = llm.New(cfg.LLMURL, cfg.LLMModel)
+		slog.Info("llm replies enabled", "model", cfg.LLMModel)
+	}
+
 	bots := make([]*chatbot.Bot, 0, len(cfg.Bots))
 	for _, botCfg := range cfg.Bots {
-		bot, err := chatbot.New(ctx, botCfg, db, live)
+		bot, err := chatbot.New(ctx, botCfg, db, live, llmClient)
 		if err != nil {
 			return fmt.Errorf("create bot %s: %w", botCfg.BotUsername, err)
 		}

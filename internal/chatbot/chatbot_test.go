@@ -10,8 +10,9 @@ import (
 )
 
 type fakeIRC struct {
-	mu   sync.Mutex
-	says []string
+	mu      sync.Mutex
+	says    []string
+	replies []string
 }
 
 func (f *fakeIRC) Say(channel, text string) {
@@ -20,7 +21,11 @@ func (f *fakeIRC) Say(channel, text string) {
 	f.says = append(f.says, text)
 }
 
-func (f *fakeIRC) Reply(channel, messageID, text string) {}
+func (f *fakeIRC) Reply(channel, messageID, text string) {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	f.replies = append(f.replies, text)
+}
 
 func (f *fakeIRC) said() []string {
 	f.mu.Lock()

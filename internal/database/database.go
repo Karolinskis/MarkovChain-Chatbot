@@ -86,6 +86,46 @@ func (d *Database) SaveMessageChainNode(ctx context.Context, channelID int, mess
 	return err
 }
 
+// ThreadMessage is one message of a Twitch reply thread.
+type ThreadMessage struct {
+	SenderUsername string
+	Text           string
+	IsBotMessage   bool
+}
+
+// GetThread returns messageID and up to limit-1 of its reply ancestors,
+// oldest first. Ancestors missing from message_chain end the walk.
+func (d *Database) GetThread(ctx context.Context, channelID int, messageID string, limit int) ([]ThreadMessage, error) {
+	rows, err := d.pool.Query(ctx, `
+		WITH RECURSIVE thread AS (
+			SELECT parent_message_id, sender_username, message_text, is_bot_message, 1 AS depth
+			FROM message_chain
+			WHERE channel_id = $1 AND message_id = $2
+			UNION ALL
+			SELECT mc.parent_message_id, mc.sender_username, mc.message_text, mc.is_bot_message, t.depth + 1
+			FROM message_chain mc
+			JOIN thread t ON mc.message_id = t.parent_message_id
+			WHERE mc.channel_id = $1 AND t.depth < $3
+		)
+		SELECT sender_username, message_text, is_bot_message FROM thread
+		ORDER BY depth DESC
+	`, channelID, messageID, limit)
+	if err != nil {
+		return nil, fmt.Errorf("get thread: %w", err)
+	}
+	defer rows.Close()
+
+	var thread []ThreadMessage
+	for rows.Next() {
+		var m ThreadMessage
+		if err := rows.Scan(&m.SenderUsername, &m.Text, &m.IsBotMessage); err != nil {
+			return nil, err
+		}
+		thread = append(thread, m)
+	}
+	return thread, rows.Err()
+}
+
 func (d *Database) AddStart(ctx context.Context, channelID int, word1, word2 string) error {
 	_, err := d.pool.Exec(ctx, `
 		INSERT INTO markov_starts (channel_id, word1, word2, count)

@@ -57,6 +57,13 @@ var (
 		Help: "Untrain attempts that failed, by channel.",
 	}, []string{"channel"})
 
+	// LLMReplies counts LLM replies to mentions and replies, by channel and
+	// outcome ("sent", "error", "filtered").
+	LLMReplies = promauto.NewCounterVec(prometheus.CounterOpts{
+		Name: "markovbot_llm_replies_total",
+		Help: "LLM reply attempts, by channel and outcome.",
+	}, []string{"channel", "outcome"})
+
 	// StreamLive reports live status per channel: 1 live, 0 offline.
 	StreamLive = promauto.NewGaugeVec(prometheus.GaugeOpts{
 		Name: "markovbot_stream_live",

@@ -11,6 +11,7 @@ A Twitch chatbot that learns from chat in realtime and generates messages using 
 - Untrains deleted messages: when moderators delete a message, its contribution to the chain (and that of all replies to it) is removed
 - Configurable auto-posting on a timer
 - Chat commands for generation (`!generate`, etc.) with a per-channel user allowlist
+- Optional replies from a local LLM ([Ollama](https://ollama.com)) when someone replies to or @mentions the bot
 - Blacklisted word filtering with Unicode normalization, plus link/mention/command filtering of generated output
 - PostgreSQL storage, partitioned per channel
 
@@ -41,6 +42,8 @@ The settings file path defaults to `settings.json` if not provided.
   "DatabaseURL": "postgres://user:password@localhost:5432/markovbot",
   "HelixClientID": "your_twitch_app_client_id",
   "HelixClientSecret": "your_twitch_app_client_secret",
+  "LLMURL": "http://ollama:11434",
+  "LLMModel": "gemma3:4b",
   "Bots": [
     {
       "BotUsername": "botUsername",
@@ -57,7 +60,10 @@ The settings file path defaults to `settings.json` if not provided.
           "AllowGenerateCommand": true,
           "GenerateCommands": ["!generate"],
           "BlacklistedWords": [],
-          "AllowNonAsciiMessages": false
+          "AllowNonAsciiMessages": false,
+          "LLMReplies": false,
+          "LLMCooldown": 30,
+          "LLMPersona": ""
         }
       ]
     }
@@ -72,6 +78,8 @@ The settings file path defaults to `settings.json` if not provided.
 | `DatabaseURL` | PostgreSQL connection string |
 | `HelixClientID` | Twitch application client ID (optional, enables live detection) |
 | `HelixClientSecret` | Twitch application client secret |
+| `LLMURL` | Ollama base URL (optional, enables LLM replies together with `LLMModel`) |
+| `LLMModel` | Ollama model name |
 | `Bots` | List of bot accounts to run |
 
 ### Per bot
@@ -97,10 +105,13 @@ The settings file path defaults to `settings.json` if not provided.
 | `GenerateCommands` | Command prefixes that trigger generation |
 | `BlacklistedWords` | Words that must never appear in generated messages |
 | `AllowNonAsciiMessages` | Allow non-ASCII characters in generated messages |
+| `LLMReplies` | Reply with the LLM when a message replies to or @mentions the bot |
+| `LLMCooldown` | Seconds before the same user can get another LLM reply |
+| `LLMPersona` | Extra instructions appended to the LLM system prompt |
 
 ## Metrics
 
-The bot serves Prometheus metrics on `/metrics` (default `:9091`, override with the `METRICS_ADDR` env var): training/generation/untrain counts and errors per channel, live status per channel, and IRC connection state per bot account.
+The bot serves Prometheus metrics on `/metrics` (default `:9091`, override with the `METRICS_ADDR` env var): training/generation/untrain counts, LLM reply outcomes and errors per channel, live status per channel, and IRC connection state per bot account.
 
 ## Chat Commands
 
@@ -141,6 +152,7 @@ go run ./cmd/migrate-sqlite \
     ├── chatbot/        # Twitch IRC client, channels, live poller
     ├── markov/         # Markov chain training and generation
     ├── database/       # PostgreSQL persistence layer and migrations
+    ├── llm/            # Ollama chat client
     ├── helix/          # Twitch Helix API client (live detection)
     ├── tokenizer/      # Sentence tokenization and detokenization
     ├── filter/         # Message filtering (links, mentions, commands)

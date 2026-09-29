@@ -9,6 +9,7 @@ import (
 	"sync"
 
 	"markovchain-chatbot/internal/database"
+	"markovchain-chatbot/internal/llm"
 	"markovchain-chatbot/internal/metrics"
 	"markovchain-chatbot/internal/settings"
 
@@ -26,7 +27,8 @@ type Bot struct {
 }
 
 // New builds a bot and registers its message handlers. Call Run to connect.
-func New(ctx context.Context, cfg settings.BotConfig, db *database.Database, live LiveChecker) (*Bot, error) {
+// A nil llmClient disables LLM replies.
+func New(ctx context.Context, cfg settings.BotConfig, db *database.Database, live LiveChecker, llmClient *llm.Client) (*Bot, error) {
 	accessToken := cfg.AccessToken
 	if !strings.HasPrefix(accessToken, "oauth:") {
 		accessToken = "oauth:" + accessToken
@@ -44,7 +46,7 @@ func New(ctx context.Context, cfg settings.BotConfig, db *database.Database, liv
 		if err != nil {
 			return nil, fmt.Errorf("ensure channel %s: %w", chCfg.ChannelName, err)
 		}
-		ch := newChannel(chCfg, channelID, client, db)
+		ch := newChannel(chCfg, channelID, client, db, llmClient)
 		if live == nil {
 			ch.isLive.Store(true)
 		}

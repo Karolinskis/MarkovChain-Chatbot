@@ -11,6 +11,8 @@ type Settings struct {
 	DatabaseURL       string      `json:"DatabaseURL"`
 	HelixClientID     string      `json:"HelixClientID"`
 	HelixClientSecret string      `json:"HelixClientSecret"`
+	LLMURL            string      `json:"LLMURL"`
+	LLMModel          string      `json:"LLMModel"`
 	Bots              []BotConfig `json:"Bots"`
 }
 
@@ -32,6 +34,9 @@ type ChannelConfig struct {
 	GenerateCommands      []string `json:"GenerateCommands"`
 	BlacklistedWords      []string `json:"BlacklistedWords"`
 	AllowNonASCIIMessages bool     `json:"AllowNonAsciiMessages"`
+	LLMReplies            bool     `json:"LLMReplies"`
+	LLMCooldown           int      `json:"LLMCooldown"`
+	LLMPersona            string   `json:"LLMPersona"`
 }
 
 // Load reads settings from the given path.
