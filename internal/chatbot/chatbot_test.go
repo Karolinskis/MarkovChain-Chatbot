@@ -105,3 +105,26 @@ func TestRunLivePollerNoChannels(t *testing.T) {
 		t.Fatal("RunLivePoller with no channels should return immediately")
 	}
 }
+
+func TestMatchCommand(t *testing.T) {
+	commands := []string{"!dadbot", "!generate"}
+	tests := []struct {
+		text string
+		args string
+		ok   bool
+	}{
+		{"!dadbot", "", true},
+		{"!DadBot how is your day?", "how is your day?", true},
+		{"  !generate   hello there  ", "hello there", true},
+		{"!dadbotfoo", "", false},
+		{"hello !dadbot", "", false},
+		{"", "", false},
+	}
+
+	for _, tt := range tests {
+		args, ok := matchCommand(tt.text, commands)
+		if args != tt.args || ok != tt.ok {
+			t.Errorf("matchCommand(%q) = %q, %v, want %q, %v", tt.text, args, ok, tt.args, tt.ok)
+		}
+	}
+}
