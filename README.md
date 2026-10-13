@@ -1,5 +1,7 @@
 # Markov Chain Chatbot
 
+[![CI](https://github.com/Karolinskis/MarkovChain-Chatbot/actions/workflows/ci.yml/badge.svg)](https://github.com/Karolinskis/MarkovChain-Chatbot/actions/workflows/ci.yml)
+
 A Twitch chatbot that learns from chat in realtime and generates messages using a second-order Markov chain. Inspired by [TwitchMarkovChain](https://github.com/tomaarsen/TwitchMarkovChain).
 
 ## Features
