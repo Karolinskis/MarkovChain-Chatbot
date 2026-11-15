@@ -31,6 +31,7 @@ type Generator struct {
 func New(db *database.Database, cfg Config) *Generator {
 	normalized := make([]string, 0, len(cfg.BlacklistedWords))
 	for _, w := range cfg.BlacklistedWords {
+		w = strings.ToLower(w)
 		normalized = append(normalized, filter.Normalize(w))
 	}
 
@@ -135,22 +136,24 @@ func (g *Generator) ContainsBlacklistedWord(message string) bool {
 	return g.areWordsBlacklisted(tokenizer.Tokenize(message))
 }
 
-func (g *Generator) isWordBlacklisted(word string) bool {
-	if len(g.normalizedBlacklistedWords) == 0 {
-		return false
-	}
-	normalizedWord := filter.Normalize(word)
-	for _, bw := range g.normalizedBlacklistedWords {
-		if bw == normalizedWord {
+func (g *Generator) areWordsBlacklisted(words []string) bool {
+	for _, w := range words {
+		if g.isWordBlacklisted(w) {
 			return true
 		}
 	}
 	return false
 }
 
-func (g *Generator) areWordsBlacklisted(words []string) bool {
-	for _, w := range words {
-		if g.isWordBlacklisted(w) {
+func (g *Generator) isWordBlacklisted(word string) bool {
+	word = strings.ToLower(word)
+
+	if len(g.normalizedBlacklistedWords) == 0 {
+		return false
+	}
+	normalizedWord := filter.Normalize(word)
+	for _, bw := range g.normalizedBlacklistedWords {
+		if bw == normalizedWord {
 			return true
 		}
 	}
